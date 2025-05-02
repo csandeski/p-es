@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import confetti from "canvas-confetti"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -20,11 +19,26 @@ import {
   Flame,
   ShoppingCart,
   Lock,
-  Check,
   AlertCircle,
   Unlock,
+  Timer,
+  Users,
+  Sparkles,
+  Cake,
+  Pizza,
+  Utensils,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+
+// Adicionar estilo de animação de pulsação
+const pulseAnimation = {
+  "@keyframes pulse": {
+    "0%": { transform: "scale(1)" },
+    "50%": { transform: "scale(1.05)" },
+    "100%": { transform: "scale(1)" },
+  },
+  animation: "pulse 2s infinite",
+}
 
 export default function BreadQuiz() {
   const [xp, setXp] = useState(0)
@@ -34,12 +48,14 @@ export default function BreadQuiz() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [correctAnswers, setCorrectAnswers] = useState(0)
   const [unlockedRecipes, setUnlockedRecipes] = useState([])
   const [activeTab, setActiveTab] = useState("quiz")
-  const [purchaseSuccess, setPurchaseSuccess] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(20 * 60) // 20 minutos em segundos
+  const [timerActive, setTimerActive] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [purchaseLoading, setPurchaseLoading] = useState(false)
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false)
 
   const levels = [
     { level: 1, name: "Aprendiz de Padeiro", xp: 0 },
@@ -65,6 +81,7 @@ export default function BreadQuiz() {
         "Hmm... esse fermento não é o ideal. O fermento biológico fresco contém mais umidade e células de levedura ativas que ajudam na fermentação perfeita.",
       explanation:
         "O fermento biológico fresco contém mais células de levedura ativas e umidade, o que resulta em uma fermentação mais vigorosa e um pão mais fofo. Ele é ideal para massas que precisam de bastante crescimento.",
+      bonus: "Truque do fermento para seu pão crescer muito!",
     },
     {
       question: "Qual é a temperatura ideal para assar um pão de forma?",
@@ -81,10 +98,11 @@ export default function BreadQuiz() {
         "A temperatura ideal é 200°C. Esta temperatura permite que o pão cresça rapidamente no início e depois desenvolva uma crosta bonita.",
       explanation:
         "A temperatura de 200°C é ideal para pães de forma porque permite um crescimento inicial rápido (oven spring) e depois forma uma crosta dourada enquanto mantém o miolo úmido e macio.",
+      bonus: "Técnica da temperatura correta!",
     },
     {
       question: "Qual é o ingrediente que dá o sabor característico ao pão?",
-      image: "https://cdn-icons-png.flaticon.com/512/730/730150.png",
+      image: "/placeholder.svg?height=200&width=300",
       options: [
         { text: "Açúcar", icon: "candy" },
         { text: "Sal", icon: "wheat" },
@@ -97,358 +115,431 @@ export default function BreadQuiz() {
         "O sal é o segredo do sabor. Ele não apenas dá sabor, mas também controla a ação do fermento e fortalece o glúten.",
       explanation:
         "O sal é essencial para o sabor do pão, mas também tem funções técnicas: controla a velocidade da fermentação, fortalece a rede de glúten e ajuda na conservação do pão.",
+      bonus: "A temperagem perfeita para Pães Caseiros!",
     },
     {
-      question: "Qual é o tempo mínimo necessário para que a massa de pão fermente adequadamente?",
-      image: "https://cdn-icons-png.flaticon.com/512/3721/3721924.png",
-      options: [
-        { text: "1 hora", icon: "clock" },
-        { text: "30 minutos", icon: "hourglass" },
-        { text: "3 horas", icon: "hourglass" },
-      ],
-      correct: "1 hora",
-      feedbackCorrect:
-        "Excelente! 1 hora é ideal para uma fermentação eficiente em temperatura ambiente. Isso permite que as leveduras produzam gás suficiente.",
-      feedbackIncorrect:
-        "O ideal é 1 hora em temperatura ambiente. Isso permite que as leveduras produzam gás suficiente para um bom crescimento.",
-      explanation:
-        "A fermentação de pelo menos 1 hora permite que as leveduras produzam CO2 suficiente para dar volume ao pão e também desenvolve sabores complexos através da fermentação.",
-    },
-    {
-      question: "Qual tipo de farinha é mais indicada para fazer pães de trigo?",
-      image: "https://ser.vitao.com.br/wp-content/uploads/2017/08/shutterstock_419782864-1-920x535.jpg",
-      options: [
-        { text: "Farinha de trigo integral", icon: "bread" },
-        { text: "Farinha de trigo branca", icon: "wheat" },
-        { text: "Farinha de milho", icon: "seedling" },
-      ],
-      correct: "Farinha de trigo branca",
-      feedbackCorrect:
-        "Boa escolha! A farinha de trigo branca tem alto teor de glúten, o que garante pães macios e fofos com boa estrutura.",
-      feedbackIncorrect:
-        "A farinha de trigo branca é a melhor para pães macios. Ela tem alto teor de glúten, o que garante boa estrutura e maciez.",
-      explanation:
-        "A farinha de trigo branca tem maior teor de glúten e menos fibras que a integral, o que resulta em pães mais leves e macios. Ideal para pães de forma e franceses.",
-    },
-    {
-      question: "O que é a autólise na preparação do pão?",
-      image: "https://cdn-icons-png.flaticon.com/512/3721/3721924.png",
-      options: [
-        { text: "Processo de mistura de ingredientes", icon: "mixer" },
-        { text: "Processo de descanso da massa", icon: "clock" },
-        { text: "Processo de assamento", icon: "flame" },
-      ],
-      correct: "Processo de descanso da massa",
-      feedbackCorrect:
-        "Isso mesmo! A autólise é o descanso da mistura de farinha e água antes de adicionar os outros ingredientes. Isso melhora a textura e o sabor do pão.",
-      feedbackIncorrect:
-        "A autólise é o descanso da mistura de farinha e água antes de adicionar os outros ingredientes. Isso melhora a textura e o sabor do pão.",
-      explanation:
-        "Na autólise, a farinha e a água são misturadas e deixadas em repouso por 20-60 minutos antes de adicionar sal e fermento. Isso permite que as enzimas da farinha comecem a quebrar o amido e as proteínas, melhorando a extensibilidade da massa e o sabor final.",
-    },
-    {
-      question: "Qual técnica ajuda a formar uma crosta crocante no pão?",
-      image: "https://i.imgur.com/4lF42re.png",
-      options: [
-        { text: "Assar em baixa temperatura", icon: "thermometer" },
-        { text: "Usar vapor no forno", icon: "cloud" },
-        { text: "Adicionar mais açúcar", icon: "candy" },
-      ],
-      correct: "Usar vapor no forno",
-      feedbackCorrect:
-        "Perfeito! O vapor cria uma crosta crocante e brilhante. Ele retarda a formação da crosta, permitindo que o pão cresça mais antes de endurecer.",
-      feedbackIncorrect:
-        "O vapor no forno é o segredo. Ele retarda a formação da crosta, permitindo que o pão cresça mais antes de endurecer.",
-      explanation:
-        "O vapor no forno mantém a superfície da massa úmida por mais tempo, permitindo maior expansão antes da formação da crosta. Quando a água evapora, deixa a crosta fina e crocante. Padeiros profissionais usam fornos a vapor, mas em casa você pode colocar uma forma com água quente no fundo do forno.",
-    },
-    {
-      question: "Qual é a proporção ideal de água para farinha em pães artesanais?",
-      image: "https://cdn-icons-png.flaticon.com/512/3721/3721924.png",
-      options: [
-        { text: "50% de água", icon: "droplet" },
-        { text: "70% de água", icon: "droplet" },
-        { text: "90% de água", icon: "droplet" },
-      ],
-      correct: "70% de água",
-      feedbackCorrect:
-        "Correto! 70% de água (em relação ao peso da farinha) garante uma massa hidratada e elástica, ideal para pães artesanais.",
-      feedbackIncorrect:
-        "A proporção ideal é 70% de água (em relação ao peso da farinha). Isso garante uma massa hidratada e elástica, ideal para pães artesanais.",
-      explanation:
-        "A hidratação de 70% (70g de água para cada 100g de farinha) é considerada o ponto ideal para muitos pães artesanais. Proporciona boa estrutura de alvéolos, miolo macio e crosta crocante. Massas com hidratação mais alta (80-90%) são mais difíceis de manipular, mas podem criar pães com alvéolos maiores, como o ciabatta.",
-    },
-    {
-      question: "Qual é o melhor método para sovar a massa de pão?",
-      image: "https://i.imgur.com/tXRDnQ9.png",
-      options: [
-        { text: "Sovar rapidamente por 5 minutos", icon: "hand" },
-        { text: "Sovar lentamente por 10-12 minutos", icon: "hand" },
-        { text: "Não sovar, apenas misturar", icon: "mixer" },
-      ],
-      correct: "Sovar lentamente por 10-12 minutos",
-      feedbackCorrect:
-        "Exato! Sovas longas e lentas desenvolvem o glúten perfeitamente, criando uma estrutura elástica e forte.",
-      feedbackIncorrect:
-        "Sovar por 10-12 minutos é o ideal. Isso desenvolve o glúten perfeitamente, criando uma estrutura elástica e forte.",
-      explanation:
-        "A sova lenta e prolongada alinha as proteínas da farinha (gliadina e glutenina) para formar o glúten, criando uma rede elástica que retém o gás da fermentação. Uma massa bem sovada deve passar no 'teste da janela' - quando esticada, deve ficar fina o suficiente para ver luz através dela sem romper.",
-    },
-    {
-      question: "Qual é o último passo antes de assar o pão?",
-      image: "https://i.imgur.com/4lF42re.png",
-      options: [
-        { text: "Fazer cortes na massa", icon: "scissors" },
-        { text: "Adicionar mais fermento", icon: "bread" },
-        { text: "Congelar a massa", icon: "snowflake" },
-      ],
-      correct: "Fazer cortes na massa",
-      feedbackCorrect: "Perfeito! Os cortes ajudam o pão a expandir de forma controlada e criam um visual incrível.",
-      feedbackIncorrect:
-        "Os cortes na massa são o último passo. Eles ajudam o pão a expandir de forma controlada e criam um visual incrível.",
-      explanation:
-        "Os cortes na superfície do pão (chamados de 'scoring') permitem que o pão expanda de forma controlada durante o assamento, evitando rachaduras aleatórias. Também criam o padrão decorativo característico de muitos pães artesanais. Use uma lâmina bem afiada ou um estilete de padeiro para cortes limpos.",
-    },
-    {
-      question: "Qual é o benefício de usar uma pedra de pizza ou dutch oven para assar pães?",
+      question: "Qual é a melhor farinha para fazer pães artesanais com boa estrutura?",
       image: "/placeholder.svg?height=200&width=300",
       options: [
-        { text: "Economiza energia", icon: "battery" },
-        { text: "Retém calor e umidade", icon: "flame" },
+        { text: "Farinha de trigo comum", icon: "wheat" },
+        { text: "Farinha de trigo integral", icon: "wheat" },
+        { text: "Farinha de trigo tipo 1", icon: "wheat" },
+      ],
+      correct: "Farinha de trigo tipo 1",
+      feedbackCorrect:
+        "Excelente! A farinha de trigo tipo 1 tem maior teor de proteínas, o que forma mais glúten e dá melhor estrutura ao pão.",
+      feedbackIncorrect:
+        "Na verdade, a farinha de trigo tipo 1 é a ideal. Ela tem maior teor de proteínas, formando mais glúten e melhor estrutura.",
+      explanation:
+        "A farinha tipo 1 possui entre 11-13% de proteína, o que resulta em uma rede de glúten mais forte, ideal para pães artesanais que precisam de boa estrutura e crescimento.",
+      bonus: "Guia completo sobre tipos de farinha para pães!",
+    },
+    {
+      question: "O que é a autólise na produção de pães?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Fermentação acelerada da massa", icon: "clock" },
+        { text: "Mistura inicial de farinha e água", icon: "droplet" },
+        { text: "Descanso da massa após a primeira sova", icon: "hourglass" },
+      ],
+      correct: "Mistura inicial de farinha e água",
+      feedbackCorrect:
+        "Correto! A autólise é a mistura de farinha e água que descansa antes de adicionar os outros ingredientes. Isso melhora a hidratação e desenvolvimento do glúten.",
+      feedbackIncorrect:
+        "A autólise é a mistura inicial de farinha e água que descansa antes de adicionar os outros ingredientes, melhorando a hidratação e desenvolvimento do glúten.",
+      explanation:
+        "Na autólise, a farinha e água são misturadas e deixadas em repouso por 20-60 minutos. Isso permite que as enzimas naturais da farinha iniciem a quebra do amido e desenvolvimento do glúten sem esforço mecânico.",
+      bonus: "Técnica de autólise para pães profissionais!",
+    },
+    {
+      question: "Qual destas técnicas melhora a crosta crocante do pão?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Borrifar água no forno durante o cozimento", icon: "droplet" },
+        { text: "Adicionar mais açúcar à massa", icon: "candy" },
+        { text: "Reduzir a temperatura do forno", icon: "thermometer" },
+      ],
+      correct: "Borrifar água no forno durante o cozimento",
+      feedbackCorrect:
+        "Perfeito! O vapor criado pela água borrifada ajuda a manter a superfície do pão flexível por mais tempo, permitindo maior expansão e depois formando uma crosta crocante.",
+      feedbackIncorrect:
+        "Borrifar água no forno cria vapor que mantém a superfície do pão flexível por mais tempo, permitindo maior expansão e depois formando uma crosta crocante.",
+      explanation:
+        "O vapor no forno impede que a superfície do pão endureça muito rápido, permitindo que o pão cresça mais. Quando o vapor se dissipa, a superfície desidrata e forma uma crosta crocante e dourada.",
+      bonus: "Segredo da crosta crocante revelado!",
+    },
+    {
+      question: "Qual é o propósito da dobra (fold) da massa durante a fermentação?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Remover o excesso de ar da massa", icon: "hand" },
+        { text: "Fortalecer a rede de glúten", icon: "scissors" },
+        { text: "Reduzir o tempo de fermentação", icon: "clock" },
+      ],
+      correct: "Fortalecer a rede de glúten",
+      feedbackCorrect:
+        "Correto! As dobras durante a fermentação realinham as cadeias de glúten, fortalecendo a estrutura da massa sem expulsar todo o gás produzido pelo fermento.",
+      feedbackIncorrect:
+        "As dobras servem para fortalecer a rede de glúten, realinhando as cadeias proteicas e criando uma estrutura mais forte sem expulsar todo o gás da fermentação.",
+      explanation:
+        "As dobras são uma técnica de desenvolvimento da massa que alinha as cadeias de glúten sem desgaseificar completamente. Isso dá força à massa enquanto mantém parte das bolhas de ar criadas durante a fermentação.",
+      bonus: "Técnica profissional de dobras para massas de alta hidratação!",
+    },
+    {
+      question: "O que é o 'oven spring' na panificação?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Uma mola especial no forno para pães", icon: "scissors" },
+        { text: "O crescimento rápido do pão nos primeiros minutos no forno", icon: "bread" },
+        { text: "Um tipo de forno profissional para pães", icon: "flame" },
+      ],
+      correct: "O crescimento rápido do pão nos primeiros minutos no forno",
+      feedbackCorrect:
+        "Exato! O 'oven spring' é a expansão final e vigorosa que ocorre nos primeiros 10-15 minutos de cozimento, devido ao calor que ativa o fermento e expande os gases.",
+      feedbackIncorrect:
+        "O 'oven spring' refere-se ao crescimento rápido do pão nos primeiros 10-15 minutos no forno, causado pelo calor que ativa o fermento e expande os gases da massa.",
+      explanation:
+        "Quando o pão entra no forno quente, o calor causa uma última atividade fermentativa intensa, expandindo os gases já presentes na massa. Esta expansão final, chamada 'oven spring', ocorre antes da estrutura do pão fixar-se pelo calor.",
+      bonus: "Como maximizar o 'oven spring' para pães mais altos e leves!",
+    },
+    {
+      question: "Qual a função do ácido ascórbico (vitamina C) na panificação industrial?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Conservar o pão por mais tempo", icon: "clock" },
+        { text: "Fortalecer a rede de glúten", icon: "scissors" },
+        { text: "Dar cor à crosta do pão", icon: "flame" },
+      ],
+      correct: "Fortalecer a rede de glúten",
+      feedbackCorrect:
+        "Correto! O ácido ascórbico atua como um melhorador de farinha, fortalecendo a rede de glúten e permitindo maior retenção de gás na massa.",
+      feedbackIncorrect:
+        "O ácido ascórbico (vitamina C) é usado como melhorador de farinha, fortalecendo a rede de glúten e permitindo maior retenção de gás na massa.",
+      explanation:
+        "Na panificação industrial, o ácido ascórbico é um oxidante que fortalece o glúten, ajudando a massa a reter gases, aumentando o volume do pão e proporcionando uma textura mais uniforme ao miolo.",
+      bonus: "Melhoradores naturais para substituir aditivos industriais!",
+    },
+    {
+      question: "Qual técnica tradicional usa uma cultura fermentada natural em vez de fermento comercial?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Fermentação direta", icon: "clock" },
+        { text: "Poolish", icon: "droplet" },
+        { text: "Sourdough (Levain)", icon: "bread" },
+      ],
+      correct: "Sourdough (Levain)",
+      feedbackCorrect:
+        "Correto! O sourdough ou levain é uma cultura fermentada natural que contém bactérias láticas e leveduras selvagens que fermentam a massa naturalmente.",
+      feedbackIncorrect:
+        "A técnica que usa cultura fermentada natural é o sourdough (ou levain), que contém bactérias láticas e leveduras selvagens coletadas do ambiente.",
+      explanation:
+        "O sourdough é uma massa fermentada que contém leveduras selvagens e bactérias láticas que ocorrem naturalmente. Essa cultura viva é mantida com alimentações regulares de farinha e água, e usada para fermentar pães com sabor mais complexo e maior durabilidade natural.",
+      bonus: "Como criar e manter seu próprio fermento natural em casa!",
+    },
+    {
+      question: "Qual é o propósito da 'estufa' ou 'câmara de fermentação' na produção de pães?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Resfriar a massa rapidamente após a sova", icon: "thermometer" },
+        { text: "Criar ambiente ideal de temperatura e umidade para fermentação", icon: "droplet" },
+        { text: "Secar a superfície do pão antes do cozimento", icon: "flame" },
+      ],
+      correct: "Criar ambiente ideal de temperatura e umidade para fermentação",
+      feedbackCorrect:
+        "Exatamente! A estufa mantém um ambiente controlado com temperatura e umidade ideais para que o fermento trabalhe de forma consistente e eficiente.",
+      feedbackIncorrect:
+        "A estufa ou câmara de fermentação tem como objetivo criar e manter um ambiente controlado com temperatura e umidade ideais para a fermentação do pão.",
+      explanation:
+        "A câmara de fermentação controla a temperatura (geralmente entre 24-28°C) e a umidade (70-85%), criando condições ideais para a atividade do fermento. Isso permite fermentações mais previsíveis e consistentes, independente das condições do ambiente externo.",
+      bonus: "Como criar uma câmara de fermentação caseira com itens simples!",
+    },
+    {
+      question: "O que é o 'ponto de véu' na massa do pão?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Quando a massa forma uma película translúcida quando esticada", icon: "scissors" },
+        { text: "O momento em que se adiciona a farinha de cobertura", icon: "wheat" },
+        { text: "O ponto onde a crosta começa a se formar no forno", icon: "flame" },
+      ],
+      correct: "Quando a massa forma uma película translúcida quando esticada",
+      feedbackCorrect:
+        "Correto! O ponto de véu é atingido quando o glúten está bem desenvolvido, permitindo esticar a massa até formar uma película fina e translúcida sem romper.",
+      feedbackIncorrect:
+        "O ponto de véu é quando você consegue esticar a massa até formar uma película fina e translúcida sem romper, indicando que o glúten está bem desenvolvido.",
+      explanation:
+        "O 'ponto de véu' ou 'teste da janela' é uma técnica para verificar se o glúten da massa está adequadamente desenvolvido. Ao esticar um pedaço da massa, ela deve formar uma membrana fina translúcida sem rasgar, indicando que está pronta para fermentar.",
+      bonus: "Como identificar o ponto perfeito da massa em cada tipo de pão!",
+    },
+    {
+      question: "O que causa o 'choque térmico' benéfico para alguns tipos de pão?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Colocar a massa quente na geladeira após a sova", icon: "thermometer" },
+        { text: "Jogar água gelada na massa durante a mistura", icon: "droplet" },
+        { text: "Transferir o pão diretamente do forno quente para um ambiente frio", icon: "flame" },
+      ],
+      correct: "Transferir o pão diretamente do forno quente para um ambiente frio",
+      feedbackCorrect:
+        "Correto! O choque térmico ao sair do forno ajuda a crosta a 'estalar', criando aquela textura crocante que muitos pães artesanais têm.",
+      feedbackIncorrect:
+        "O choque térmico benéfico ocorre ao transferir o pão do forno quente para um ambiente mais frio, fazendo a crosta 'estalar' e desenvolver aquela textura crocante característica.",
+      explanation:
+        "O choque térmico ocorre quando o pão sai do forno muito quente para um ambiente mais frio. Isso faz com que a crosta contraia rapidamente, criando pequenas rachaduras que contribuem para a crocância e aparência rústica do pão artesanal.",
+      bonus: "Técnicas de resfriamento para diferentes tipos de pães!",
+    },
+    {
+      question:
+        "Qual ingrediente pode ser usado para aumentar a durabilidade natural do pão sem conservantes químicos?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Batata cozida amassada", icon: "wheat" },
+        { text: "Açúcar refinado", icon: "candy" },
+        { text: "Bicarbonato de sódio", icon: "flask" },
+      ],
+      correct: "Batata cozida amassada",
+      feedbackCorrect:
+        "Exato! A batata cozida amassada adiciona umidade e amido à massa, que retém água por mais tempo e retarda o envelhecimento do pão.",
+      feedbackIncorrect:
+        "A batata cozida amassada é excelente para aumentar a vida útil do pão. Ela adiciona umidade e amido que retém água por mais tempo, retardando o envelhecimento.",
+      explanation:
+        "A batata contém amidos que retêm umidade melhor que a farinha de trigo, mantendo o pão macio por mais tempo. Além disso, o amido da batata retarda a retrogradação do amido do trigo, que é o processo que torna o pão duro e velho.",
+      bonus: "Ingredientes naturais que prolongam a maciez do pão por dias!",
+    },
+    {
+      question: "Qual é a função do 'poolish' na produção de pães?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Dar cor à crosta do pão", icon: "flame" },
+        { text: "Desenvolver sabor e melhorar a textura", icon: "bread" },
+        { text: "Reduzir o tempo total de preparo", icon: "clock" },
+      ],
+      correct: "Desenvolver sabor e melhorar a textura",
+      feedbackCorrect:
+        "Correto! O poolish é uma pré-fermentação líquida que desenvolve compostos aromáticos complexos e enzimas que melhoram o sabor e a textura final do pão.",
+      feedbackIncorrect:
+        "O poolish é uma pré-fermentação líquida usada para desenvolver sabor mais complexo e melhorar a textura do pão final, criando um miolo mais aberto e aerado.",
+      explanation:
+        "O poolish é uma pré-fermentação líquida (geralmente 100% de hidratação) que fermenta por várias horas antes de ser incorporada à massa final. Durante esse tempo, desenvolve ácidos orgânicos, álcoois e ésteres que contribuem para sabor complexo, além de enzimas que melhoram a extensibilidade da massa.",
+      bonus: "Receita completa de poolish para pães com sabor profissional!",
+    },
+    {
+      question: "Por que alguns pães precisam de duas fermentações (primeira e segunda)?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Para economizar fermento", icon: "wheat" },
+        { text: "Para desenvolver sabor e estrutura", icon: "bread" },
+        { text: "Apenas por tradição antiga", icon: "hourglass" },
+      ],
+      correct: "Para desenvolver sabor e estrutura",
+      feedbackCorrect:
+        "Exato! A primeira fermentação (bulk) desenvolve sabor e força no glúten, enquanto a segunda (após moldar) permite a formação correta da estrutura final do pão.",
+      feedbackIncorrect:
+        "As duas fermentações são importantes para desenvolver sabor (na primeira) e estrutura final do pão (na segunda, após moldar).",
+      explanation:
+        "A primeira fermentação (em massa) permite o desenvolvimento de sabor e fortalecimento do glúten. Após a modelagem, a segunda fermentação permite que o pão recupere o volume e desenvolva a estrutura celular correta antes de ir ao forno. Este processo em duas etapas resulta em pães com melhor textura e sabor.",
+      bonus: "Guia definitivo dos tempos de fermentação para cada tipo de pão!",
+    },
+    {
+      question: "Qual é a técnica correta para esfriar um pão depois de assado?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Cobrir com um pano úmido imediatamente", icon: "droplet" },
+        { text: "Deixar esfriar completamente sobre uma grade", icon: "thermometer" },
+        { text: "Colocar na geladeira por 30 minutos", icon: "flame" },
+      ],
+      correct: "Deixar esfriar completamente sobre uma grade",
+      feedbackCorrect:
+        "Correto! Esfriar sobre uma grade permite que o ar circule por todos os lados do pão, evitando que a umidade condense na base e torne a crosta mole.",
+      feedbackIncorrect:
+        "O pão deve esfriar completamente sobre uma grade, permitindo que o ar circule por todos os lados, evitando condensação de umidade que amoleceria a crosta.",
+      explanation:
+        "Esfriar o pão em uma grade permite que o vapor escape uniformemente por todos os lados. Se o pão for colocado em uma superfície plana enquanto quente, o vapor se condensa na parte inferior, amolecendo a crosta. Cobrir pão quente também causa condensação que arruína a crocância da crosta.",
+      bonus: "Técnica perfeita de resfriamento para manter a crosta crocante!",
+    },
+    {
+      question: "O que é o 'scoring' na panificação artesanal?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
+        { text: "Avaliar a qualidade do pão após assado", icon: "star" },
+        { text: "Fazer cortes na superfície da massa antes de assar", icon: "scissors" },
+        { text: "Polvilhar farinha na superfície para decoração", icon: "wheat" },
+      ],
+      correct: "Fazer cortes na superfície da massa antes de assar",
+      feedbackCorrect:
+        "Exato! O 'scoring' são os cortes feitos na superfície da massa antes de assar, que controlam onde o pão vai expandir durante o 'oven spring'.",
+      feedbackIncorrect:
+        "O 'scoring' consiste em fazer cortes na superfície da massa antes de assar, o que direciona e controla a expansão do pão durante o cozimento.",
+      explanation:
+        "O 'scoring' ou corte da massa é uma técnica que tem função tanto estética quanto técnica. Os cortes permitem que o pão expanda de forma controlada durante o 'oven spring', prevenindo rachaduras aleatórias e criando a aparência característica de muitos pães artesanais.",
+      bonus: "Padrões de corte para criar pães artesanais deslumbrantes!",
+    },
+    {
+      question: "Qual é o benefício de usar água filtrada para fazer pães?",
+      image: "/placeholder.svg?height=200&width=300",
+      options: [
         { text: "Reduz o tempo de cozimento", icon: "clock" },
+        { text: "Melhora a atividade do fermento", icon: "bread" },
+        { text: "Aumenta o teor de proteínas da massa", icon: "wheat" },
       ],
-      correct: "Retém calor e umidade",
+      correct: "Melhora a atividade do fermento",
       feedbackCorrect:
-        "Correto! Pedras de pizza e dutch ovens retêm e distribuem calor uniformemente, além de criar um ambiente úmido ideal para pães.",
+        "Correto! A água filtrada sem cloro permite que o fermento trabalhe melhor, pois o cloro pode inibir a atividade das leveduras.",
       feedbackIncorrect:
-        "Pedras de pizza e dutch ovens retêm e distribuem calor uniformemente, além de criar um ambiente úmido ideal para pães.",
+        "A água filtrada melhora a atividade do fermento porque não contém cloro ou outros componentes que possam inibir o crescimento das leveduras.",
       explanation:
-        "Pedras de pizza e dutch ovens são excelentes para assar pães porque mantêm temperatura alta e constante, simulando fornos profissionais. O dutch oven também retém o vapor liberado pela massa, criando o ambiente úmido necessário para uma crosta perfeita. Isso resulta em pães com melhor crescimento, crosta crocante e miolo macio.",
+        "O cloro presente na água da torneira é adicionado para matar microrganismos, mas pode também afetar negativamente as leveduras do fermento. Usar água filtrada ou deixar a água descansar para o cloro evaporar garante melhor fermentação e, consequentemente, melhor crescimento do pão.",
+      bonus: "Guia completo sobre a influência da água na qualidade do pão!",
     },
     {
-      question: "Qual é a função do açúcar na receita de pão?",
+      question: "Qual técnica ajuda a criar um miolo mais aberto com bolhas grandes em pães artesanais?",
       image: "/placeholder.svg?height=200&width=300",
       options: [
-        { text: "Apenas adoçar", icon: "candy" },
-        { text: "Alimentar o fermento", icon: "bread" },
-        { text: "Dar cor à crosta", icon: "palette" },
+        { text: "Sovar intensamente por 20 minutos", icon: "hand" },
+        { text: "Alta hidratação e manuseio delicado", icon: "droplet" },
+        { text: "Adicionar mais fermento à massa", icon: "bread" },
       ],
-      correct: "Alimentar o fermento",
+      correct: "Alta hidratação e manuseio delicado",
       feedbackCorrect:
-        "Excelente! O açúcar serve principalmente como alimento para o fermento, acelerando a fermentação.",
-      feedbackIncorrect: "O açúcar serve principalmente como alimento para o fermento, acelerando a fermentação.",
-      explanation:
-        "O açúcar é rapidamente consumido pelas leveduras do fermento, acelerando a fermentação. Também contribui para o sabor, maciez e ajuda no douramento da crosta (reação de Maillard). Em pequenas quantidades (1-2% do peso da farinha), o açúcar não deixa o pão doce, apenas otimiza a fermentação.",
-    },
-    {
-      question: "Qual é a melhor maneira de armazenar pão caseiro?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Na geladeira", icon: "refrigerator" },
-        { text: "Em saco plástico hermético", icon: "package" },
-        { text: "Em pano de algodão ou papel", icon: "shirt" },
-      ],
-      correct: "Em pano de algodão ou papel",
-      feedbackCorrect:
-        "Correto! Panos de algodão ou papel permitem que o pão respire, mantendo a crosta crocante por mais tempo.",
+        "Perfeito! Massas com alta hidratação (mais água) e manipuladas gentilmente preservam as bolhas de ar já formadas, resultando em um miolo mais aberto.",
       feedbackIncorrect:
-        "Panos de algodão ou papel são ideais, pois permitem que o pão respire, mantendo a crosta crocante por mais tempo.",
+        "Para criar um miolo aberto com bolhas grandes, a técnica ideal é usar alta hidratação (mais água na massa) e manusear a massa delicadamente para preservar as bolhas de ar.",
       explanation:
-        "Pães artesanais devem ser armazenados em materiais que permitam alguma circulação de ar, como panos de algodão ou sacos de papel. Isso preserva a textura da crosta. Plásticos herméticos fazem a crosta amolecer rapidamente. A geladeira acelera o ressecamento do pão. Para armazenamento mais longo, o ideal é fatiar e congelar o pão.",
-    },
-    {
-      question: "O que é 'poolish' na panificação?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Um tipo de farinha polonesa", icon: "wheat" },
-        { text: "Uma técnica de sova", icon: "hand" },
-        { text: "Um pré-fermento líquido", icon: "droplet" },
-      ],
-      correct: "Um pré-fermento líquido",
-      feedbackCorrect:
-        "Perfeito! Poolish é um pré-fermento líquido feito com partes iguais de farinha e água, mais uma pequena quantidade de fermento.",
-      feedbackIncorrect:
-        "Poolish é um pré-fermento líquido feito com partes iguais de farinha e água, mais uma pequena quantidade de fermento.",
-      explanation:
-        "O poolish é um tipo de pré-fermento líquido (100% de hidratação) originário da Polônia. É preparado misturando partes iguais de farinha e água com uma pequena quantidade de fermento, deixando fermentar por 8-16 horas. Adiciona complexidade de sabor, melhora a textura e prolonga a vida útil do pão.",
-    },
-    {
-      question: "Qual é a importância da 'tensão superficial' ao modelar pães?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Não tem importância", icon: "x" },
-        { text: "Ajuda o pão a crescer para cima", icon: "arrow-up" },
-        { text: "Apenas melhora a aparência", icon: "eye" },
-      ],
-      correct: "Ajuda o pão a crescer para cima",
-      feedbackCorrect:
-        "Correto! A tensão superficial criada ao modelar o pão direciona o crescimento para cima em vez de para os lados.",
-      feedbackIncorrect:
-        "A tensão superficial criada ao modelar o pão direciona o crescimento para cima em vez de para os lados.",
-      explanation:
-        "Criar tensão superficial ao modelar o pão é crucial para um bom crescimento vertical. Isso é feito puxando a massa para baixo e selando na parte inferior. Uma boa tensão superficial cria uma 'pele' que direciona a expansão dos gases para cima, resultando em pães mais altos e com melhor estrutura interna.",
-    },
-    {
-      question: "Qual é o papel da gordura (óleo, manteiga) na massa do pão?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Apenas dar sabor", icon: "utensils" },
-        { text: "Aumentar o tempo de fermentação", icon: "clock" },
-        { text: "Tornar o miolo mais macio", icon: "feather" },
-      ],
-      correct: "Tornar o miolo mais macio",
-      feedbackCorrect:
-        "Exato! A gordura envolve as proteínas do glúten, tornando o miolo mais macio e prolongando a maciez do pão.",
-      feedbackIncorrect:
-        "A gordura envolve as proteínas do glúten, tornando o miolo mais macio e prolongando a maciez do pão.",
-      explanation:
-        "A gordura (óleo, manteiga, banha) lubrifica as fibras de glúten, resultando em um miolo mais macio e tenro. Também retarda o envelhecimento do pão, mantendo-o fresco por mais tempo. Pães enriquecidos com gordura (como brioche) são mais macios, enquanto pães sem gordura (como baguetes) têm crosta mais crocante e miolo mais firme.",
-    },
-    {
-      question: "O que significa 'ponto de véu' na massa de pão?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Quando a massa fica transparente", icon: "eye" },
-        { text: "Quando a massa não gruda mais", icon: "hand" },
-        { text: "Quando a massa dobra de tamanho", icon: "maximize" },
-      ],
-      correct: "Quando a massa fica transparente",
-      feedbackCorrect:
-        "Correto! O 'ponto de véu' é quando a massa pode ser esticada até ficar fina e translúcida sem romper.",
-      feedbackIncorrect: "O 'ponto de véu' é quando a massa pode ser esticada até ficar fina e translúcida sem romper.",
-      explanation:
-        "O 'ponto de véu' ou 'teste da janela' é uma técnica para verificar se o glúten está bem desenvolvido. Pegue um pedaço de massa e estique-o com os dedos - se puder esticá-lo até ficar fino e translúcido sem romper, o glúten está bem desenvolvido e a massa está pronta para fermentar.",
-    },
-    {
-      question: "Qual é a função da 'dobra' durante a fermentação da massa?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Apenas para dar formato", icon: "square" },
-        { text: "Redistribuir o fermento", icon: "refresh-cw" },
-        { text: "Fortalecer o glúten sem sovar", icon: "trending-up" },
-      ],
-      correct: "Fortalecer o glúten sem sovar",
-      feedbackCorrect:
-        "Perfeito! As dobras durante a fermentação reorganizam e alinham as fibras de glúten, fortalecendo a estrutura da massa sem sovar excessivamente.",
-      feedbackIncorrect:
-        "As dobras durante a fermentação reorganizam e alinham as fibras de glúten, fortalecendo a estrutura da massa sem sovar excessivamente.",
-      explanation:
-        "A técnica de dobras (stretch and fold) é uma alternativa à sova tradicional. Consiste em esticar a massa e dobrá-la sobre si mesma várias vezes durante a fermentação. Isso alinha as fibras de glúten, fortalece a estrutura da massa, distribui uniformemente a temperatura e os açúcares, e incorpora oxigênio, tudo sem desgastar o glúten como na sova prolongada.",
-    },
-    {
-      question: "Por que é importante a 'fermentação final' antes de assar o pão?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Para desenvolver mais glúten", icon: "link" },
-        { text: "Para dar volume final ao pão", icon: "maximize" },
-        { text: "Para reduzir o tempo de forno", icon: "clock" },
-      ],
-      correct: "Para dar volume final ao pão",
-      feedbackCorrect:
-        "Correto! A fermentação final (após modelar) permite que o pão atinja seu volume ideal antes de ir ao forno.",
-      feedbackIncorrect:
-        "A fermentação final (após modelar) permite que o pão atinja seu volume ideal antes de ir ao forno.",
-      explanation:
-        "A fermentação final (ou proof) ocorre após a modelagem do pão. Nesta fase, a massa já modelada descansa até quase dobrar de volume. É crucial não subestimar nem exagerar neste tempo: pouca fermentação resulta em pão denso, enquanto fermentação excessiva pode fazer o pão colapsar no forno. O teste do dedo (pressionar levemente a massa - deve voltar lentamente) ajuda a determinar o ponto ideal.",
-    },
-    {
-      question: "O que é 'massa madre' ou 'levain'?",
-      image: "/placeholder.svg?height=200&width=300",
-      options: [
-        { text: "Um tipo de farinha especial", icon: "wheat" },
-        { text: "Fermento natural cultivado", icon: "seedling" },
-        { text: "Uma técnica de modelagem", icon: "hand" },
-      ],
-      correct: "Fermento natural cultivado",
-      feedbackCorrect:
-        "Excelente! Massa madre ou levain é um fermento natural cultivado a partir de farinha, água e microrganismos do ambiente.",
-      feedbackIncorrect:
-        "Massa madre ou levain é um fermento natural cultivado a partir de farinha, água e microrganismos do ambiente.",
-      explanation:
-        "A massa madre (ou levain, sourdough) é um fermento natural cultivado a partir de farinha e água, que captura leveduras e bactérias selvagens do ambiente. Diferente do fermento comercial, contém múltiplas espécies de microrganismos, principalmente leveduras e bactérias láticas, que fermentam a massa mais lentamente e produzem ácidos que dão o sabor característico e prolongam a vida útil do pão.",
+        "Massas com alta hidratação (acima de 70%) têm mais espaço para as bolhas de gás se desenvolverem. Combinado com um manuseio delicado que preserva essas bolhas, em vez de expulsá-las como na sova intensiva, o resultado é um pão com estrutura alveolar aberta e irregular, característica de pães artesanais.",
+      bonus: "Técnicas avançadas para criar pães com alveolagem perfeita!",
     },
   ]
 
-  const recipes = [
+  const bonusItems = [
+    {
+      title: "Truque do fermento para seu pão crescer muito!",
+      description: "Descubra como ativar o fermento corretamente para obter o máximo de crescimento em seus pães.",
+      icon: "sparkles",
+    },
+    {
+      title: "Técnica da temperatura correta!",
+      description: "Aprenda a controlar a temperatura do forno para obter pães perfeitos em qualquer situação.",
+      icon: "flame",
+    },
+    {
+      title: "A temperagem perfeita para Pães Caseiros!",
+      description: "Domine a arte de equilibrar os ingredientes para obter a textura ideal em seus pães.",
+      icon: "star",
+    },
+    {
+      title: "Farinhas Especiais para Pães Caseiros!",
+      description: "Conheça os tipos de farinha ideais para cada tipo de pão e como combiná-las.",
+      icon: "wheat",
+    },
+    {
+      title: "Técnica de autólise para pães profissionais!",
+      description: "Aprenda a técnica usada por padeiros profissionais para desenvolver o glúten naturalmente.",
+      icon: "clock",
+    },
+    {
+      title: "Segredo da crosta crocante revelado!",
+      description: "Descubra como obter aquela crosta dourada e crocante que estala ao ser cortada.",
+      icon: "sparkles",
+    },
+  ]
+
+  const recipeCollections = [
     {
       id: 1,
-      title: "Pão Caseiro Básico Super Macio",
-      description: "Receita infalível para iniciantes, com resultado profissional",
+      title: "300 Receitas de Pães Caseiros Fofinhos que Crescem Muito",
+      description: "A coleção completa com todas as técnicas e segredos para pães perfeitos",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 2,
+      price: 37.0,
+      icon: "bread",
     },
     {
       id: 2,
-      title: "Pão Italiano com Azeite e Ervas",
-      description: "Pão macio com sabor mediterrâneo e crosta crocante",
+      title: "75 Receitas de Tortas Salgadas",
+      description: "Tortas salgadas perfeitas para qualquer ocasião",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 4,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "utensils",
+      requiredCorrect: 1, // Reduzido de 2 para 1
     },
     {
       id: 3,
-      title: "Pão de Fermentação Natural Simplificado",
-      description: "Técnica de fermentação natural sem complicações",
+      title: "80 Receitas de Pizzas Artesanais",
+      description: "Aprenda a fazer pizzas com massa perfeita e coberturas deliciosas",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 6,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "pizza",
+      requiredCorrect: 2, // Reduzido de 4 para 2
     },
     {
       id: 4,
-      title: "Brioche Francês Premium",
-      description: "Pão enriquecido com manteiga e ovos, perfeito para café da manhã",
+      title: "120 Receitas de Bolos, Doces e Sobremesas",
+      description: "Doces irresistíveis para todas as ocasiões",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 8,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "cake",
+      requiredCorrect: 3, // Reduzido de 6 para 3
     },
     {
       id: 5,
-      title: "Pão Artesanal Rústico de Fermentação Lenta",
-      description: "Técnica profissional de hidratação alta e fermentação prolongada",
+      title: "20 Receitas de Empadinhas e Empadões Artesanais",
+      description: "Aprenda a fazer massas perfeitas e recheios suculentos",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 10,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "utensils",
+      requiredCorrect: 4, // Reduzido de 8 para 4
     },
     {
       id: 6,
-      title: "Pão de Batata Ultra Macio",
-      description: "O segredo dos padeiros para pães que derretem na boca",
+      title: "20 Receitas de Salgados Fritos Artesanais",
+      description: "Salgados crocantes e suculentos para festas e eventos",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 12,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "utensils",
+      requiredCorrect: 5, // Reduzido de 10 para 5
     },
     {
       id: 7,
-      title: "Pão Integral 100% Saudável e Macio",
-      description: "Técnica exclusiva para pães integrais que não ficam pesados",
+      title: "110 Receitas de Salgados Assados",
+      description: "Opções mais saudáveis e igualmente deliciosas de salgados",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 14,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "utensils",
+      requiredCorrect: 7, // Reduzido de 12 para 7
     },
     {
       id: 8,
-      title: "Focaccia Italiana Autêntica",
-      description: "Segredos da verdadeira focaccia com azeite extra virgem",
+      title: "200 Receitas Práticas para AirFryer",
+      description: "Receitas rápidas, saudáveis e deliciosas para sua fritadeira a ar",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 16,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "utensils",
+      requiredCorrect: 9, // Reduzido de 14 para 9
     },
     {
       id: 9,
-      title: "Pão de Queijo Mineiro Tradicional",
-      description: "A receita autêntica que faz sucesso em todo o Brasil",
+      title: "30 Receitas de Cucas Caseiras",
+      description: "Cucas tradicionais com coberturas crocantes e massas macias",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 18,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "cake",
+      requiredCorrect: 11, // Reduzido de 16 para 11
     },
     {
       id: 10,
-      title: "Coletânea Completa de Pães Artesanais",
-      description: "Todas as técnicas avançadas e receitas exclusivas em um só lugar",
+      title: "Grupo VIP com Alunas e Chefs Profissionais",
+      description: "Acesso exclusivo a grupo com dicas, suporte e novidades",
       image: "/placeholder.svg?height=200&width=300",
-      unlocked: false,
-      requiredCorrect: 20,
+      originalPrice: 19.9,
+      price: 0,
+      icon: "users",
+      requiredCorrect: 13, // Reduzido de 18 para 13
     },
   ]
 
@@ -480,10 +571,6 @@ export default function BreadQuiz() {
   ]
 
   useEffect(() => {
-    createFlourParticles()
-  }, [])
-
-  useEffect(() => {
     // Atualiza o nível com base no XP atual
     let newLevel = 1
     for (let i = levels.length - 1; i >= 0; i--) {
@@ -507,8 +594,12 @@ export default function BreadQuiz() {
   useEffect(() => {
     const newUnlockedRecipes = [...unlockedRecipes]
 
-    recipes.forEach((recipe) => {
-      if (correctAnswers >= recipe.requiredCorrect && !newUnlockedRecipes.includes(recipe.id)) {
+    recipeCollections.forEach((recipe) => {
+      if (
+        recipe.requiredCorrect &&
+        correctAnswers >= recipe.requiredCorrect &&
+        !newUnlockedRecipes.includes(recipe.id)
+      ) {
         newUnlockedRecipes.push(recipe.id)
 
         // Mostrar notificação de nova receita desbloqueada
@@ -526,16 +617,27 @@ export default function BreadQuiz() {
     }
   }, [correctAnswers, unlockedRecipes])
 
-  const createFlourParticles = () => {
-    for (let i = 0; i < 20; i++) {
-      const particle = document.createElement("div")
-      particle.className = "absolute w-[5px] h-[5px] bg-white/80 rounded-full shadow-sm animate-float z-10"
-      particle.style.left = `${Math.random() * 100}%`
-      particle.style.animationDelay = `${Math.random() * 5}s`
-      particle.style.width = `${Math.random() * 5 + 2}px`
-      particle.style.height = particle.style.width
-      document.body.appendChild(particle)
+  // Timer para a oferta limitada
+  useEffect(() => {
+    if (timerActive && timeLeft > 0) {
+      const timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
     }
+  }, [timeLeft, timerActive])
+
+  // Ativar o timer quando o usuário desbloquear a primeira receita
+  useEffect(() => {
+    if (unlockedRecipes.length > 0 && !timerActive) {
+      setTimerActive(true)
+    }
+  }, [unlockedRecipes, timerActive])
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`
   }
 
   const triggerConfetti = () => {
@@ -568,17 +670,6 @@ export default function BreadQuiz() {
 
     if (correct) {
       triggerConfetti()
-      playSound("success")
-    } else {
-      playSound("incorrect")
-    }
-  }
-
-  const playSound = (type) => {
-    const sound = document.getElementById(`${type}-sound`)
-    if (sound) {
-      sound.currentTime = 0
-      sound.play().catch((e) => console.error(`${type} sound playback failed:`, e))
     }
   }
 
@@ -591,19 +682,6 @@ export default function BreadQuiz() {
     } else {
       setShowCompletionModal(true)
     }
-  }
-
-  const handlePurchase = () => {
-    setPurchaseLoading(true)
-
-    // Simulação de processamento de pagamento
-    setTimeout(() => {
-      setPurchaseLoading(false)
-      setPurchaseSuccess(true)
-
-      // Mostrar confetti para celebrar a compra
-      triggerConfetti()
-    }, 2000)
   }
 
   const getCurrentLevelProgress = () => {
@@ -641,46 +719,97 @@ export default function BreadQuiz() {
         return <Gift className="h-5 w-5" />
       case "scissors":
         return <Gift className="h-5 w-5" />
+      case "pizza":
+        return <Pizza className="h-5 w-5" />
+      case "cake":
+        return <Cake className="h-5 w-5" />
+      case "utensils":
+        return <Utensils className="h-5 w-5" />
+      case "users":
+        return <Users className="h-5 w-5" />
+      case "sparkles":
+        return <Sparkles className="h-5 w-5" />
       default:
         return <BookOpen className="h-5 w-5" />
     }
   }
 
+  const getUnlockedBonuses = () => {
+    return bonusItems.slice(0, Math.min(correctAnswers, bonusItems.length))
+  }
+
+  // In the handlePurchase function, keep it as is but add a comment about redirecting to checkout
+  const handlePurchase = () => {
+    setPurchaseLoading(true)
+
+    // Simulação de processamento de pagamento
+    setTimeout(() => {
+      setPurchaseLoading(false)
+      setPurchaseSuccess(true)
+
+      // Na implementação real, redirecionar para o checkout externo
+      // window.location.href = "https://seu-checkout-externo.com";
+
+      // Mostrar confetti para celebrar a compra
+      triggerConfetti()
+    }, 2000)
+  }
+
   return (
     <div className="min-h-screen bg-[#FDF6E3] bg-[url('https://www.transparenttextures.com/patterns/flour.png')] p-4">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-center text-[#8B4513] my-6 font-serif relative inline-block">
-          Jogo de Pães: Desbloqueie Receitas Exclusivas
-          <span className="absolute bottom-0 left-[10%] right-[10%] h-1 bg-gradient-to-r from-transparent via-[#FFC107] to-transparent"></span>
-        </h1>
+      {/* Removido o título "Jogo de pães..." */}
 
-        <Card className="mb-6 overflow-hidden">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-center">
-              <div className="font-medium">{xp} XP</div>
-              <div className="font-medium">Próximo nível: {getXPToNextLevel()} XP</div>
-            </div>
-          </CardHeader>
-          <CardContent className="pb-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Star className="h-5 w-5 text-[#FFC107]" />
-              <span className="font-bold">
-                Nível {currentLevel}: {levels[currentLevel - 1].name}
-              </span>
-            </div>
-            <Progress value={getCurrentLevelProgress()} className="h-5" />
-          </CardContent>
-        </Card>
+      {/* Removido o timer da parte superior */}
 
-        <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-center mb-6">
-          <div className="flex items-center justify-center gap-2 font-medium text-amber-800">
-            <Trophy className="h-5 w-5 text-amber-600" />
-            <span>
-              Respostas corretas: {correctAnswers} de {questions.length}
-            </span>
-          </div>
-          <p className="text-sm mt-1">A cada 2 respostas corretas você desbloqueia uma receita exclusiva!</p>
+      {/* Barra de XP e progresso mais atrativa */}
+      <Card className="mb-6 overflow-hidden border border-amber-200 shadow-md">
+  <CardContent className="p-4">
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2">
+        <div className="bg-amber-500 text-white p-1.5 rounded-full">
+          <Star className="h-5 w-5" />
         </div>
+        <span className="font-bold text-amber-800">
+          Nível {currentLevel}: {levels[currentLevel - 1].name}
+        </span>
+      </div>
+      <div className="text-sm font-medium text-amber-700">
+        {xp} XP / {getXPToNextLevel()} XP para o próximo nível
+      </div>
+    </div>
+    <div className="relative pt-1">
+      <div className="flex mb-2 items-center justify-between">
+        <div>
+          <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-amber-600 bg-amber-100">
+            Progresso
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="text-xs font-semibold inline-block text-amber-600">
+            {getCurrentLevelProgress()}%
+          </span>
+        </div>
+      </div>
+      <div className="overflow-hidden h-2 mb-1 text-xs flex rounded bg-amber-100">
+        <div
+          style={{ width: `${getCurrentLevelProgress()}%` }}
+          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-amber-400 to-amber-600"
+        ></div>
+      </div>
+    </div>
+  </CardContent>
+</Card>
+
+      <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-center mb-6 shadow-md">
+        <div className="flex items-center justify-center gap-2 font-medium text-amber-800">
+          <Trophy className="h-5 w-5 text-amber-600" />
+          <span>
+            Respostas corretas: {correctAnswers} de {questions.length}
+          </span>
+        </div>
+        <p className="text-sm mt-1">Responda corretamente para desbloquear receitas exclusivas!</p>
+      </div>
 
         <Tabs defaultValue="quiz" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-6">
@@ -696,14 +825,12 @@ export default function BreadQuiz() {
             <TabsTrigger value="tips">Dicas</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="quiz" className="space-y-4">
+          <TabsContent value="quiz">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  Pergunta {currentQuestionIndex + 1} de {questions.length}
-                </CardTitle>
+                <CardTitle>Pergunta {currentQuestionIndex + 1} de {questions.length}</CardTitle>
                 <CardDescription>
-                  Responda corretamente para ganhar XP e desbloquear receitas exclusivas!
+                  Responda corretamente para desbloquear receitas exclusivas!
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -766,6 +893,16 @@ export default function BreadQuiz() {
                       <p>{questions[currentQuestionIndex].explanation}</p>
                     </div>
 
+                    {isCorrect && questions[currentQuestionIndex].bonus && (
+                      <div className="mt-4 bg-amber-100 p-3 rounded-lg border border-amber-300">
+                        <h4 className="font-bold text-amber-800 flex items-center">
+                          <Gift className="h-5 w-5 mr-2" />
+                          Bônus Desbloqueado!
+                        </h4>
+                        <p className="text-amber-800">{questions[currentQuestionIndex].bonus}</p>
+                      </div>
+                    )}
+
                     {isCorrect && correctAnswers % 2 === 0 && correctAnswers > 0 && (
                       <div className="mt-4 bg-amber-100 p-3 rounded-lg border border-amber-300">
                         <h4 className="font-bold text-amber-800 flex items-center">
@@ -773,7 +910,7 @@ export default function BreadQuiz() {
                           Nova Receita Desbloqueada!
                         </h4>
                         <p className="text-amber-800">
-                          Você desbloqueou a receita: {recipes.find((r) => r.requiredCorrect === correctAnswers)?.title}
+                          Você desbloqueou: {recipeCollections.find((r) => r.requiredCorrect === correctAnswers)?.title}
                         </p>
                         <Button
                           variant="outline"
@@ -821,62 +958,79 @@ export default function BreadQuiz() {
               </p>
             </div>
 
+            {timerActive && (
+              <div className="bg-red-50 border-2 border-red-500 p-3 rounded-md text-center mb-4">
+                <div className="flex items-center justify-center gap-2 font-bold text-red-700">
+                  <Timer className="h-5 w-5" />
+                  <span>OFERTA EXPIRA EM: {formatTime(timeLeft)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recipes.map((recipe, index) => (
-                <Card
-                  key={index}
-                  className={`overflow-hidden ${unlockedRecipes.includes(recipe.id) ? "" : "opacity-70"}`}
-                >
-                  <div className="relative">
-                    <img
-                      src={recipe.image || "/placeholder.svg"}
-                      alt={recipe.title}
-                      className="w-full h-40 object-cover"
-                    />
-                    {!unlockedRecipes.includes(recipe.id) && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <div className="text-center text-white">
-                          <Lock className="h-8 w-8 mx-auto mb-2" />
-                          <p>Desbloqueie com {recipe.requiredCorrect} respostas corretas</p>
+              {recipeCollections.map((recipe, index) => (
+                recipe.id !== 1 && (
+                  <Card
+                    key={index}
+                    className={`overflow-hidden ${unlockedRecipes.includes(recipe.id) ? "" : "opacity-70"}`}
+                  >
+                    <div className="relative">
+                      <img
+                        src={recipe.image || "/placeholder.svg"}
+                        alt={recipe.title}
+                        className="w-full h-40 object-cover"
+                      />
+                      {!unlockedRecipes.includes(recipe.id) && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <div className="text-center text-white">
+                            <Lock className="h-8 w-8 mx-auto mb-2" />
+                            <p>Desbloqueie com {recipe.requiredCorrect} respostas corretas</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {unlockedRecipes.includes(recipe.id) && (
-                      <div className="absolute top-2 right-2">
-                        <Badge className="bg-green-500">Desbloqueado</Badge>
-                      </div>
-                    )}
-                  </div>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-xl">{recipe.title}</CardTitle>
-                    </div>
-                    <CardDescription>{recipe.description}</CardDescription>
-                  </CardHeader>
-                  <CardFooter className="flex flex-col items-start">
-                    <div className="mb-2 w-full">
-                      {unlockedRecipes.includes(recipe.id) ? (
-                        <div className="flex items-center">
-                          <span className="line-through text-gray-500 mr-2">R$19,00</span>
-                          <span className="text-green-600 font-bold">R$0,00</span>
-                          <Badge className="ml-auto bg-amber-100 text-amber-800 hover:bg-amber-200">Desbloqueado</Badge>
-                        </div>
-                      ) : (
-                        <div>
-                          <span className="text-gray-500">R$19,00</span>
+                      )}
+                      {unlockedRecipes.includes(recipe.id) && (
+                        <div className="absolute top-2 right-2 flex items-center gap-1">
+                          <Badge className="bg-green-500 flex items-center gap-1">
+                            <Trophy className="h-3.5 w-3.5" />
+                            Desbloqueado
+                          </Badge>
                         </div>
                       )}
                     </div>
-                    <Button
-                      className="w-full"
-                      variant={unlockedRecipes.includes(recipe.id) ? "default" : "outline"}
-                      disabled={!unlockedRecipes.includes(recipe.id)}
-                      onClick={() => setShowPurchaseModal(true)}
-                    >
-                      {unlockedRecipes.includes(recipe.id) ? "Comprar para Acessar" : "Bloqueado"}
-                    </Button>
-                  </CardFooter>
-                </Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-xl flex items-center gap-2">
+                          {renderIcon(recipe.icon)}
+                          {recipe.title}
+                        </CardTitle>
+                      </div>
+                      <CardDescription>{recipe.description}</CardDescription>
+                    </CardHeader>
+                    <CardFooter className="flex flex-col items-start">
+                      <div className="mb-2 w-full">
+                        {unlockedRecipes.includes(recipe.id) ? (
+                          <div className="flex items-center">
+                            <span className="line-through text-gray-500 mr-2">R${recipe.originalPrice.toFixed(2)}</span>
+                            <span className="text-green-600 font-bold">R${recipe.price.toFixed(2)}</span>
+                            <Badge className="ml-auto bg-amber-100 text-amber-800 hover:bg-amber-200">Desbloqueado</Badge>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-gray-500">R${recipe.originalPrice.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        className="w-full"
+                        variant={unlockedRecipes.includes(recipe.id) ? "default" : "outline"}
+                        disabled={!unlockedRecipes.includes(recipe.id)}
+                        onClick={() => setShowCompletionModal(true)}
+                      >
+                        {unlockedRecipes.includes(recipe.id) ? "Ver Receita" : "Bloqueado"}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )
               ))}
             </div>
 
@@ -894,14 +1048,13 @@ export default function BreadQuiz() {
                 <CardContent>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <div className="line-through text-gray-500">
-                        {unlockedRecipes.length} receitas x R$19,00 = R${unlockedRecipes.length * 19},00
+                      <div className="text-2xl font-bold text-green-600">300 Receitas Exclusivas</div>
+                      <div className="text-sm text-green-700">
+                        Incluindo {unlockedRecipes.length} receitas que você já desbloqueou!
                       </div>
-                      <div className="text-2xl font-bold text-green-600">Apenas R$37,00</div>
-                      <div className="text-sm text-green-700">Economize R${unlockedRecipes.length * 19 - 37},00</div>
                     </div>
-                    <Badge className="bg-red-500 text-white text-lg py-1 px-3">
-                      -{Math.round((1 - 37 / (unlockedRecipes.length * 19)) * 100)}%
+                    <Badge className="bg-green-500 text-white text-lg py-1 px-3">
+                      Aprenda Agora
                     </Badge>
                   </div>
                 </CardContent>
@@ -911,7 +1064,7 @@ export default function BreadQuiz() {
                     onClick={() => setShowPurchaseModal(true)}
                   >
                     <ShoppingCart className="mr-2 h-5 w-5" />
-                    Comprar Agora por R$37,00
+                    Eu quero todas receitas com desconto!
                   </Button>
                 </CardFooter>
               </Card>
@@ -934,193 +1087,359 @@ export default function BreadQuiz() {
                 </Card>
               ))}
             </div>
+            {getUnlockedBonuses().map((bonus, index) => (
+              <Card key={`bonus-${index}`} className="bg-amber-50 border-amber-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {renderIcon(bonus.icon)}
+                    {bonus.title}
+                    <Badge className="ml-2 bg-green-100 text-green-800">Bônus</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>{bonus.description}</p>
+                </CardContent>
+              </Card>
+            ))}
           </TabsContent>
-        </Tabs>
 
-        {showCompletionModal && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <Card className="max-w-md w-full">
-              <CardHeader>
-                <CardTitle className="text-2xl">Parabéns, {levels[currentLevel - 1].name}! 🎉</CardTitle>
-                <CardDescription>Você completou o jogo com {xp} XP!</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p>Você demonstrou grande conhecimento sobre a arte de fazer pães!</p>
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <h3 className="font-bold text-amber-800 flex items-center gap-2">
-                    <Trophy className="h-5 w-5" />
-                    Você desbloqueou:
-                  </h3>
-                  <p className="mt-2">{unlockedRecipes.length} Receitas Exclusivas de Pães!</p>
-                  <p className="mt-1 text-sm">Compre agora para acessar todas as receitas desbloqueadas.</p>
+{showCompletionModal && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <Card className="max-w-xl w-full overflow-y-auto max-h-[90vh]">
+      <div className="bg-gradient-to-r from-amber-400 to-amber-600 text-white p-5">
+        <CardTitle className="text-3xl text-center">Parabéns, {levels[currentLevel - 1].name}! 🎉</CardTitle>
+        <CardDescription className="text-center text-white/90 text-lg mt-1">
+          Você completou o jogo com {xp} XP e desbloqueou {unlockedRecipes.length} receitas!
+        </CardDescription>
+      </div>
+      <CardContent className="space-y-4 p-6">
+        
+        <div className="bg-amber-50 p-4 rounded-lg border-2 border-amber-300">
+          <h3 className="font-bold text-amber-800 flex items-center gap-2 text-lg">
+            <Trophy className="h-6 w-6 text-amber-600" />
+            Receitas Desbloqueadas: {unlockedRecipes.length}
+          </h3>
+          
+          {/* Receita principal com destaque */}
+          <div className="mt-4 mb-4 bg-green-100 p-4 rounded-lg border-2 border-green-500 shadow-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Bread className="h-7 w-7 text-amber-700 bg-amber-100 p-1 rounded-full mr-2" />
+                <div>
+                  <h4 className="font-bold text-lg">300 Melhores Receitas de pães fofinhos que crescem muito! + Bônus</h4>
+                  <p className="text-sm text-gray-600">A coleção completa com todas as técnicas e segredos</p>
                 </div>
-
-                <div className="mt-4">
-                  <h3 className="font-bold text-lg mb-2">Acesse todas as receitas desbloqueadas:</h3>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <div className="line-through text-gray-500">
-                        {unlockedRecipes.length} receitas x R$19,00 = R${unlockedRecipes.length * 19},00
-                      </div>
-                      <div className="text-2xl font-bold text-green-600">Apenas R$37,00</div>
-                      <div className="text-sm text-green-700">Economize R${unlockedRecipes.length * 19 - 37},00</div>
-                    </div>
-                    <Badge className="bg-red-500 text-white text-lg py-1 px-3">
-                      -{Math.round((1 - 37 / (unlockedRecipes.length * 19)) * 100)}%
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowCompletionModal(false)
-                    setActiveTab("recipes")
-                  }}
-                  className="flex-1"
-                >
-                  Ver Receitas
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowCompletionModal(false)
-                    setShowPurchaseModal(true)
-                  }}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  Comprar Agora
-                </Button>
-              </CardFooter>
-            </Card>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
+                <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
+                <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
+              </div>
+            </div>
           </div>
-        )}
-
-        {showPurchaseModal && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <Card className="max-w-md w-full">
-              <CardHeader>
-                <CardTitle className="text-2xl">
-                  {purchaseSuccess ? "Compra Realizada com Sucesso!" : "Complete sua Compra"}
-                </CardTitle>
-                <CardDescription>
-                  {purchaseSuccess
-                    ? "Suas receitas exclusivas estão disponíveis!"
-                    : "Acesse todas as receitas desbloqueadas por apenas R$37,00"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {purchaseSuccess ? (
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Check className="h-8 w-8 text-green-600" />
-                    </div>
-                    <p className="text-lg">Parabéns! Você agora tem acesso a todas as receitas exclusivas.</p>
-                    <p className="mt-2 text-gray-600">Um e-mail com os detalhes de acesso foi enviado para você.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                      <h3 className="font-bold text-amber-800">O que você vai receber:</h3>
-                      <ul className="mt-2 space-y-2">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
-                          <span>Acesso a todas as {unlockedRecipes.length} receitas desbloqueadas</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
-                          <span>Técnicas exclusivas de fermentação e modelagem</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
-                          <span>Guia completo de ingredientes e equipamentos</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
-                          <span>Acesso vitalício a todas as atualizações</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <div className="line-through text-gray-500">De R${unlockedRecipes.length * 19},00</div>
-                        <div className="text-2xl font-bold">Por R$37,00</div>
-                      </div>
-                      <Badge className="bg-red-500 text-white">Oferta por tempo limitado</Badge>
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
-                      <AlertCircle className="h-4 w-4 inline-block mr-1" />
-                      Pagamento 100% seguro. Satisfação garantida ou seu dinheiro de volta em até 7 dias.
-                    </div>
-                  </>
-                )}
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                {purchaseSuccess ? (
-                  <Button
-                    onClick={() => {
-                      setShowPurchaseModal(false)
-                      setActiveTab("recipes")
-                    }}
-                    className="w-full"
-                  >
-                    Acessar Minhas Receitas
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="outline" onClick={() => setShowPurchaseModal(false)} className="flex-1">
-                      Voltar
-                    </Button>
-                    <Button
-                      onClick={handlePurchase}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                      disabled={purchaseLoading}
-                    >
-                      {purchaseLoading ? (
-                        <div className="flex items-center">
-                          <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                          Processando...
-                        </div>
-                      ) : (
-                        <>Finalizar Compra - R$37,00</>
-                      )}
-                    </Button>
-                  </>
-                )}
-              </CardFooter>
-            </Card>
+          
+          <ul className="mt-2 space-y-2 divide-y divide-amber-200">
+            {recipeCollections.filter(r => r.id !== 1 && unlockedRecipes.includes(r.id)).map((recipe, index) => (
+              <li key={index} className="flex items-center justify-between pt-2">
+                <span className="flex items-center">
+                  {renderIcon(recipe.icon)}
+                  <span className="ml-2">{recipe.title}</span>
+                </span>
+                <span className="text-green-600 font-semibold">
+                  <span className="line-through text-gray-500 mr-1">R$19,90</span>
+                  <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-bold">Grátis</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        <div className="bg-green-50 p-4 rounded-lg border-2 border-green-300 mt-4">
+          <h3 className="font-bold text-green-800 flex items-center gap-2 text-lg">
+            <Gift className="h-6 w-6 text-green-600" />
+            Bônus Desbloqueados:
+          </h3>
+          <ul className="mt-2 space-y-2">
+            {getUnlockedBonuses().map((bonus, index) => (
+              <li key={index} className="flex items-center bg-white p-3 rounded border border-green-200">
+                {renderIcon(bonus.icon)}
+                <span className="ml-2 text-base">{bonus.title}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        
+      <div className="bg-amber-50 p-5 rounded-lg border-2 border-amber-300 mb-4">
+          <h3 className="font-bold text-center text-2xl mb-3 text-amber-800">
+            PARABÉNS! VOCÊ DESBLOQUEOU UMA OFERTA ESPECIAL
+          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
+              <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
+              <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
+            </div>
+            <Badge className="bg-red-600 text-white text-xl py-1.5 px-3 rotate-3 transform">-81%</Badge>
           </div>
-        )}
+        </div>
+      </CardContent>
+      <CardFooter className="flex gap-2 p-6 bg-gray-50 border-t">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowCompletionModal(false)
+            setActiveTab("recipes")
+          }}
+          className="flex-1"
+        >
+          Ver Receitas
+        </Button>
+        <Button
+          onClick={() => {
+            setShowCompletionModal(false)
+            setShowPurchaseModal(true)
+          }}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-lg py-6"
+        >
+          Acessar Agora
+        </Button>
+      </CardFooter>
+    </Card>
+  </div>
+)}
 
-        <audio
-          id="success-sound"
-          src="https://store-screenapp-production.storage.googleapis.com/vid/680f1df7d92b2914716649f7/eb94f5b6-511b-458b-b32d-e93b0ad616ce.mp3"
-          preload="auto"
-        ></audio>
-        <audio
-          id="incorrect-sound"
-          src="https://archive.org/download/fail-144746/fail-144746.mp3"
-          preload="auto"
-        ></audio>
+{showPurchaseModal && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <Card className="max-w-xl w-full overflow-y-auto max-h-[90vh]">
+      <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-6">
+        <CardTitle className="text-2xl text-center">Acesse Todas as Receitas</CardTitle>
+        <CardDescription className="text-center text-white/90 mt-1">
+          {purchaseSuccess
+            ? "Parabéns pela sua compra!"
+            : "Desbloqueie receitas exclusivas com um único pagamento"}
+        </CardDescription>
+      </div>
+      <CardContent className="space-y-6 p-6">
+        {!purchaseSuccess ? (
+          <>
+            <div className="bg-red-50 border-2 border-red-500 p-3 rounded-md text-center mb-4">
+              <div className="flex items-center justify-center gap-2 font-bold text-red-700">
+                <Timer className="h-5 w-5" />
+                <span>ESSA OFERTA ESPECIAL EXPIRA EM: {formatTime(timeLeft)}</span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 p-4 rounded-lg border-2 border-amber-300">
+              <h3 className="font-bold text-amber-800 text-lg flex items-center gap-2">
+                <Gift className="h-5 w-5 text-amber-700" />
+                O que você vai receber:
+              </h3>
+              <ul className="mt-4 space-y-3">
+                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
+                  <Bread className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
+                  <div>
+                    <div className="font-medium">300 Receitas de Pães Caseiros Fofinhos</div>
+                    <div className="text-xs text-gray-500">A coleção completa com todas as técnicas</div>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
+                  <Utensils className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
+                  <div>
+                    <div className="font-medium">75 Receitas de Tortas Salgadas</div>
+                    <div className="text-xs text-gray-500">Perfeitas para festas e eventos</div>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
+                  <Pizza className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
+                  <div>
+                    <div className="font-medium">80 Receitas de Pizzas Artesanais</div>
+                    <div className="text-xs text-gray-500">Com massa perfeita e coberturas deliciosas</div>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
+                  <Cake className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
+                  <div>
+                    <div className="font-medium">120 Receitas de Bolos e Sobremesas</div>
+                    <div className="text-xs text-gray-500">Doces irresistíveis para todas as ocasiões</div>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
+                  <Users className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
+                  <div>
+                    <div className="font-medium">Acesso ao Grupo VIP de Suporte</div>
+                    <div className="text-xs text-gray-500">Tire dúvidas diretamente com chefs profissionais</div>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200 border-green-300">
+                  <Trophy className="h-6 w-6 text-green-600 bg-green-100 p-1 rounded-full" />
+                  <div>
+                    <div className="font-medium text-green-700">+ Todas as receitas desbloqueadas</div>
+                    <div className="text-xs text-gray-500">Acesso imediato a todas as receitas que você já desbloqueou</div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+      
+      <div className="bg-amber-100 p-4 rounded-lg border-2 border-amber-300">
+        <h3 className="font-bold text-amber-800 flex items-center gap-2">
+          <Gift className="h-5 w-5" />
+          Mais todos os bônus e troques da página anterior!
+        </h3>
+        <p className="text-sm text-amber-700 mt-1">
+          Você receberá acesso a todas as receitas desbloqueadas e todos os bônus exclusivos em um único pacote.
+        </p>
       </div>
 
-      <style jsx global>{`
-        @keyframes float {
-          0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
-          50% { transform: translateY(50vh) translateX(20px) rotate(180deg); opacity: 0.4; }
-          100% { transform: translateY(100vh) translateX(-20px) rotate(360deg); opacity: 0; }
-        }
-        
-        .animate-float {
-          animation:  rotate(360deg); opacity: 0; }
-        }
-        
-        .animate-float {
-          animation: float 12s infinite ease-in-out;
-        }
-      `}</style>
+      <div className="flex items-center justify-between p-4 bg-green-50 border-2 border-green-300 rounded-lg">
+        <div>
+          <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
+          <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
+          <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
+        </div>
+        <Badge className="bg-red-600 text-white text-xl py-1.5 px-3 rotate-3 transform">-81%</Badge>
+      </div>
+      
+      <Button
+        className="w-full bg-green-600 hover:bg-green-700 text-xl py-8 font-bold shadow-lg rounded-full"
+        style={pulseAnimation}
+        onClick={handlePurchase}
+        disabled={purchaseLoading}
+      >
+        {purchaseLoading ? (
+          "Processando..."
+        ) : (
+          <>
+            <ShoppingCart className="mr-2 h-6 w-6" />
+            Eu quero as receitas!
+          </>
+        )}
+      </Button>
+      
+      <div className="flex justify-center mt-2">
+        <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Lock className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-gray-700">Pagamento 100% Seguro e Confiável</span>
+          </div>
+          <div className="text-xs text-gray-500">Seus dados estão protegidos e criptografados</div>
+        </div>
+      </div>
+      
+      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mt-3">
+        <div className="flex items-center gap-2">
+          <Award className="h-5 w-5 text-blue-600" />
+          <span className="font-medium text-blue-800">Garantia de 90 dias</span>
+        </div>
+        <p className="text-sm text-blue-700 mt-1">
+          Conforme o Código de Defesa do Consumidor, você tem 90 dias de garantia. Se não ficar satisfeito, devolvemos seu dinheiro.
+        </p>
+      </div>
+    </>
+  ) : (
+    <>
+    <div className="mt-8 border-t border-gray-200 pt-6">
+      <h3 className="text-xl font-bold text-center mb-4">Como funciona:</h3>
+      <div className="space-y-6">
+        <div className="flex items-start gap-3">
+          <div className="bg-green-100 rounded-full w-8 h-8 flex items-center justify-center text-green-700 font-bold flex-shrink-0">1</div>
+          <div>
+            <h4 className="font-bold text-gray-800">Liberando o acesso:</h4>
+            <p className="text-gray-600">Basta clicar no botão para desbloquear seu acesso a todas as receitas e seus bônus que você conquistou!</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="bg-green-100 rounded-full w-8 h-8 flex items-center justify-center text-green-700 font-bold flex-shrink-0">2</div>
+          <div>
+            <h4 className="font-bold text-gray-800">Pague com Pix ou Cartão:</h4>
+            <p className="text-gray-600">Você escolhe como quer pagar! Finalize sua compra para receber tudo imediatamente no email e whatsapp.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="bg-green-100 rounded-full w-8 h-8 flex items-center justify-center text-green-700 font-bold flex-shrink-0">3</div>
+          <div>
+            <h4 className="font-bold text-gray-800">Receba seu acesso:</h4>
+            <p className="text-gray-600">Você receberá o link para o acesso ao acervo completo de todas as receitas e bônus de suas conquistas!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="mt-8 border-t border-gray-200 pt-6">
+      <h3 className="text-xl font-bold text-center mb-4">O que dizem nossos clientes:</h3>
+      <div className="space-y-4">
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3 mb-2">
+            <img 
+              src="https://infosaber.online/wp-content/uploads/2025/03/Design-sem-nome-1.png-633x1024.webp" 
+              alt="Depoimento de cliente" 
+              className="w-16 h-16 rounded-full object-cover"
+            />
+            <div>
+              <h4 className="font-bold">Maria Silva</h4>
+              <div className="flex text-amber-400">
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+              </div>
+            </div>
+          </div>
+          <p className="text-gray-600 italic">"Essas receitas transformaram minha forma de fazer pães! Agora todos os meus pães ficam fofos e crescem muito. Minha família adora!"</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3 mb-2">
+            <img 
+              src="https://infosaber.online/wp-content/uploads/2025/03/Design-sem-nome-2-864x1536-1-576x1024.png" 
+              alt="Depoimento de cliente" 
+              className="w-16 h-16 rounded-full object-cover"
+            />
+            <div>
+              <h4 className="font-bold">João Oliveira</h4>
+              <div className="flex text-amber-400">
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
+              </div>
+            </div>
+          </div>
+          <p className="text-gray-600 italic">"Nunca imaginei que conseguiria fazer pães tão profissionais em casa! As técnicas são simples de seguir e os resultados são incríveis. Recomendo muito!"</p>
+        </div>
+      </div>
+    </div>
+  </>
+  )}
+</CardContent>
+      <CardFooter className="flex flex-col gap-2 p-6 bg-gray-50 border-t">
+        {!purchaseSuccess ? (
+          <Button
+            className="w-full"
+            onClick={() => {
+              setShowPurchaseModal(false)
+              setActiveTab("recipes")
+            }}
+          >
+            Voltar
+          </Button>
+        ) : (
+          <Button
+            className="w-full"
+            onClick={() => {
+              setShowPurchaseModal(false)
+              setActiveTab("recipes")
+            }}
+          >
+            Continuar
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  </div>
+)}
+      </div>
     </div>
   )
 }
