@@ -1,5 +1,9 @@
-import BreadQuiz from "../quiz-melhorado"
+import BreadQuiz from "@/components/bread-quiz"
 
-export default function Page() {
-  return <BreadQuiz />
+export default function Home() {
+  return (
+    <main className="min-h-screen">
+      <BreadQuiz />
+    </main>
+  )
 }

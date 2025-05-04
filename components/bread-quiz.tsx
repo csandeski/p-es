@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState, useRef } from "react"
 import confetti from "canvas-confetti"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,17 +27,51 @@ import {
   Cake,
   Pizza,
   Utensils,
+  CheckCircle,
+  PlayCircle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { motion } from "framer-motion"
 
-// Adicionar estilo de animação de pulsação
-const pulseAnimation = {
+// Adicionar estilos de animação
+const animations = {
   "@keyframes pulse": {
     "0%": { transform: "scale(1)" },
     "50%": { transform: "scale(1.05)" },
     "100%": { transform: "scale(1)" },
   },
   animation: "pulse 2s infinite",
+  "@keyframes fadeIn": {
+    "0%": { opacity: 0, transform: "translateY(-20px)" },
+    "100%": { opacity: 1, transform: "translateY(0)" },
+  },
+  "@keyframes slideIn": {
+    "0%": { opacity: 0, transform: "translateY(20px)" },
+    "100%": { opacity: 1, transform: "translateY(0)" },
+  },
+  "@keyframes scaleIn": {
+    "0%": { opacity: 0, transform: "scale(0.9)" },
+    "100%": { opacity: 1, transform: "scale(1)" },
+  },
+  "@keyframes fadeInScale": {
+    "0%": { opacity: 0, transform: "scale(0.95)" },
+    "100%": { opacity: 1, transform: "scale(1)" },
+  },
+  ".animate-fadeIn": {
+    animation: "fadeIn 0.5s ease-out forwards",
+  },
+  ".animate-slideIn": {
+    animation: "slideIn 0.5s ease-out forwards",
+  },
+  ".animate-scaleIn": {
+    animation: "scaleIn 0.4s ease-out forwards",
+  },
+  ".animate-fadeInScale": {
+    animation: "fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+  },
+  ".staggered-item": {
+    opacity: 0,
+  },
 }
 
 export default function BreadQuiz() {
@@ -56,6 +90,16 @@ export default function BreadQuiz() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [purchaseLoading, setPurchaseLoading] = useState(false)
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
+  const [showStartScreen, setShowStartScreen] = useState(true) // Estado para controlar a tela inicial
+  const [showInstructions, setShowInstructions] = useState(false)
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false)
+  const [newLevel, setNewLevel] = useState(0)
+
+  const successAudioRef = useRef(null)
+  const errorAudioRef = useRef(null)
+  const popupAudioRef = useRef(null)
+  const levelUpAudioRef = useRef(null)
+  const completionAudioRef = useRef(null)
 
   const levels = [
     { level: 1, name: "Aprendiz de Padeiro", xp: 0 },
@@ -570,24 +614,50 @@ export default function BreadQuiz() {
     },
   ]
 
+  const startScreenFeatures = [
+    {
+      title: "Aprenda Técnicas Profissionais",
+      description: "Descubra os segredos dos padeiros profissionais para fazer pães perfeitos",
+      icon: "trophy",
+    },
+    {
+      title: "Receitas Exclusivas",
+      description: "Desbloqueie as melhores receitas de pães caseiros e outras delícias",
+      icon: "sparkles",
+    },
+    {
+      title: "Ganhe Recompensas",
+      description: "Quanto mais você acerta, mais receitas e bônus você desbloqueia",
+      icon: "gift",
+    },
+    {
+      title: "Torne-se um Mestre Padeiro",
+      description: "Evolua de aprendiz a mestre padeiro enquanto aprende novas técnicas",
+      icon: "star",
+    },
+  ]
+
   useEffect(() => {
     // Atualiza o nível com base no XP atual
-    let newLevel = 1
+    let newLevelValue = 1
     for (let i = levels.length - 1; i >= 0; i--) {
       if (xp >= levels[i].xp) {
-        newLevel = levels[i].level
+        newLevelValue = levels[i].level
         break
       }
     }
 
-    if (newLevel > currentLevel) {
+    if (newLevelValue > currentLevel) {
       // Subiu de nível
       setTimeout(() => {
         triggerConfetti()
+        setNewLevel(newLevelValue)
+        setShowLevelUpModal(true)
+        levelUpAudioRef.current?.play()
       }, 300)
     }
 
-    setCurrentLevel(newLevel)
+    setCurrentLevel(newLevelValue)
   }, [xp, currentLevel])
 
   // Efeito para desbloquear receitas com base nas respostas corretas
@@ -641,13 +711,28 @@ export default function BreadQuiz() {
   }
 
   const triggerConfetti = () => {
+  confetti({
+    particleCount: 150,
+    spread: 80,
+    origin: { y: 0.6 },
+    colors: ["#FFD700", "#FFFFFF", "#8B4513", "#FFA500", "#F5DEB3"],
+    ticks: 300,
+    gravity: 0.8,
+    shapes: ['square', 'circle'],
+    scalar: 1.2
+  })
+  
+  // Segundo disparo com atraso para efeito mais duradouro
+  setTimeout(() => {
     confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
+      particleCount: 80,
+      spread: 60,
+      origin: { y: 0.7, x: 0.3 },
       colors: ["#FFD700", "#FFFFFF", "#8B4513"],
+      ticks: 200
     })
-  }
+  }, 200)
+}
 
   const updateXP = (correct) => {
     if (correct) {
@@ -668,8 +753,12 @@ export default function BreadQuiz() {
     setShowFeedback(true)
     updateXP(correct)
 
+    // Reproduzir o som apropriado
     if (correct) {
       triggerConfetti()
+      successAudioRef.current?.play()
+    } else {
+      errorAudioRef.current?.play()
     }
   }
 
@@ -681,6 +770,8 @@ export default function BreadQuiz() {
       setCurrentQuestionIndex((prev) => prev + 1)
     } else {
       setShowCompletionModal(true)
+      completionAudioRef.current?.play()
+      triggerConfetti()
     }
   }
 
@@ -729,6 +820,10 @@ export default function BreadQuiz() {
         return <Users className="h-5 w-5" />
       case "sparkles":
         return <Sparkles className="h-5 w-5" />
+      case "trophy":
+        return <Trophy className="h-5 w-5" />
+      case "gift":
+        return <Gift className="h-5 w-5" />
       default:
         return <BookOpen className="h-5 w-5" />
     }
@@ -738,26 +833,281 @@ export default function BreadQuiz() {
     return bonusItems.slice(0, Math.min(correctAnswers, bonusItems.length))
   }
 
-  // In the handlePurchase function, keep it as is but add a comment about redirecting to checkout
   const handlePurchase = () => {
     setPurchaseLoading(true)
 
-    // Simulação de processamento de pagamento
+    // Redirecionar para o link do Hotmart após um breve delay
     setTimeout(() => {
-      setPurchaseLoading(false)
-      setPurchaseSuccess(true)
+      window.location.href = "https://pay.hotmart.com/B98040643U?off=n8pnn3vv&checkoutMode=10&bid=1746213889617"
+    }, 500)
+  }
 
-      // Na implementação real, redirecionar para o checkout externo
-      // window.location.href = "https://seu-checkout-externo.com";
+  // Função para animar elementos quando aparecerem na tela
+const animateElement = (element, delay = 0) => {
+  return {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    transition: { 
+      duration: 0.4, 
+      delay: delay,
+      ease: [0.25, 0.1, 0.25, 1.0]
+    }
+  }
+}
 
-      // Mostrar confetti para celebrar a compra
-      triggerConfetti()
-    }, 2000)
+  // Se showStartScreen for verdadeiro, mostre a tela de início
+  if (showStartScreen) {
+    return (
+      <div className="min-h-screen bg-[#FDF6E3] bg-[url('https://www.transparenttextures.com/patterns/flour.png')] p-4 flex items-center justify-center">
+        <div className="max-w-5xl w-full">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-amber-200">
+            <div className="bg-gradient-to-r from-amber-400 to-amber-600 p-8 text-white text-center">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">Mini-Game do Pão Perfeito</h1>
+              <p className="text-lg sm:text-xl md:text-2xl opacity-90">
+                Teste seus conhecimentos e desbloqueie as melhores receitas!
+              </p>
+            </div>
+
+            <div className="p-6 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10 mb-8">
+                <div className="md:w-1/2">
+                  <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 mb-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-amber-800 mb-3 flex items-center gap-2">
+                      <Bread className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
+                      <span className="leading-tight">
+                        Desbloqueie as 300 Receitas de Pães Caseiros Fofinhos mais desejadas do Brasil!
+                      </span>
+                    </h2>
+                    <p className="text-gray-700">
+                      Responda corretamente às perguntas do jogo e ganhe acesso às melhores receitas de pães caseiros
+                      fofinhos da internet, além de diversas receitas bônus!
+                    </p>
+                  </div>
+
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0" />
+                      <span className="font-bold text-green-800">
+                        Tudo o que você precisa para fazer pães perfeitos
+                      </span>
+                    </div>
+                    <p className="text-gray-700 mb-4">
+                      Aprenda técnicas profissionais, segredos e truques para fazer pães que crescem muito, ficam super
+                      fofos e com uma crosta perfeita!
+                    </p>
+
+                    <ul className="space-y-2">
+                      {startScreenFeatures.map((feature, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <div className="bg-white p-1.5 rounded-full text-amber-500 border border-amber-200">
+                            {renderIcon(feature.icon)}
+                          </div>
+                          <span className="text-gray-700">{feature.title}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="md:w-1/2 bg-amber-50 rounded-xl p-5 border border-amber-200 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-amber-500 text-white py-1 px-3 rounded-bl-lg text-sm font-bold">
+                    OFERTA ESPECIAL
+                  </div>
+
+                  <div className="text-center mb-4">
+                    <img
+                      src="https://i.imgur.com/tXRDnQ9.png"
+                      alt="Pão Fofinho"
+                      className="mx-auto max-w-full h-auto mb-4"
+                    />
+                    <h3 className="text-lg sm:text-xl font-bold text-amber-800 leading-tight">
+                      Aprenda os segredos da confeitaria e aprenda a fazer pães perfeitos!
+                    </h3>
+                    <p className="text-gray-600 mb-2">Aprenda a fazer pães incríveis que impressionam a todos!</p>
+                    <div className="text-xl sm:text-2xl font-bold text-green-600 mb-1">
+                      Desbloqueie Receitas Exclusivas
+                    </div>
+                    <div className="text-sm text-amber-600 mb-3">
+                      Desbloqueie receitas enquanto aprende e se diverte
+                    </div>
+                  </div>
+
+                  <Button
+                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white py-4 sm:py-6 text-base sm:text-xl font-bold rounded-lg shadow-lg flex items-center justify-center"
+                    onClick={() => {
+                      setShowStartScreen(false)
+                      setShowInstructions(true)
+                    }}
+                    style={animations}
+                  >
+                    <PlayCircle className="h-5 w-5 sm:h-6 sm:w-6 mr-2 flex-shrink-0" />
+                    <span className="whitespace-normal text-center">INICIAR O JOGO AGORA!</span>
+                  </Button>
+
+                  <div className="mt-4 text-center text-sm text-gray-600">
+                    Jogue e responda corretamente para desbloquear todas as receitas!
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                <div className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex items-center gap-3 h-full">
+                  <Trophy className="h-5 w-5 text-amber-500" />
+                  <span className="text-sm font-medium text-gray-700">+ de 300 receitas exclusivas</span>
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex items-center gap-3 h-full">
+                  <Award className="h-5 w-5 text-amber-500" />
+                  <span className="text-sm font-medium text-gray-700">Técnicas profissionais</span>
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex items-center gap-3 h-full">
+                  <Gift className="h-5 w-5 text-amber-500" />
+                  <span className="text-sm font-medium text-gray-700">Bônus a cada acerto</span>
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex items-center gap-3 h-full">
+                  <Sparkles className="h-5 w-5 text-amber-500" />
+                  <span className="text-sm font-medium text-gray-700">Conteúdo exclusivo</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-[#FDF6E3] bg-[url('https://www.transparenttextures.com/patterns/flour.png')] p-4">
+      {/* Elementos de áudio */}
+      <audio 
+        ref={successAudioRef} 
+        src="https://assets.mixkit.co/active_storage/sfx/2018/success-1-6297.wav" 
+        preload="auto"
+      />
+      <audio 
+        ref={errorAudioRef} 
+        src="https://assets.mixkit.co/active_storage/sfx/2022/error-2-7146.wav" 
+        preload="auto"
+      />
+      <audio 
+        ref={popupAudioRef} 
+        src="https://assets.mixkit.co/active_storage/sfx/2019/open-3-6059.wav" 
+        preload="auto"
+      />
+      <audio 
+        ref={levelUpAudioRef} 
+        src="https://assets.mixkit.co/active_storage/sfx/2005/game-level-complete-2008.wav" 
+        preload="auto"
+      />
+      <audio 
+        ref={completionAudioRef} 
+        src="https://assets.mixkit.co/active_storage/sfx/2013/victory-1-7692.wav" 
+        preload="auto"
+      />
+    
       <div className="max-w-4xl mx-auto">
+   {showInstructions && (
+  <motion.div 
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.3 }}
+  >
+    <motion.div 
+      className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl border-2 border-amber-300"
+      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ 
+        duration: 0.4, 
+        ease: [0.16, 1, 0.3, 1],
+        delay: 0.1
+      }}
+      onAnimationStart={() => popupAudioRef.current?.play()}
+    >
+      <motion.div 
+        className="text-center mb-6"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+      >
+        <motion.div 
+          className="bg-amber-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 300, 
+            damping: 15,
+            delay: 0.3
+          }}
+        >
+          <Sparkles className="h-12 w-12 text-amber-500" />
+        </motion.div>
+        <motion.h2 
+          className="text-2xl font-bold text-amber-800 mb-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+        >
+          Acerte as perguntas e desbloqueie Receitas Exclusivas!
+        </motion.h2>
+        <motion.p 
+          className="text-gray-600"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+        >
+          Vamos começar nossa jornada para se tornar um mestre padeiro!
+        </motion.p>
+      </motion.div>
+      
+      <div className="space-y-4 mb-6">
+        {[1, 2, 3].map((step, index) => (
+          <motion.div 
+            key={`step-${step}`}
+            className="flex items-start gap-3 bg-amber-50 p-3 rounded-lg border border-amber-100"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ 
+              duration: 0.4, 
+              delay: 0.5 + (index * 0.15),
+              ease: "easeOut"
+            }}
+          >
+            <div className="bg-amber-100 rounded-full w-8 h-8 flex items-center justify-center text-amber-700 font-bold flex-shrink-0">
+              {step}
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-800">
+                {step === 1 ? "Leia cada pergunta com atenção" : 
+                 step === 2 ? "Escolha a resposta correta" : 
+                 "Desbloqueie receitas exclusivas"}
+              </h4>
+              <p className="text-gray-600">
+                {step === 1 ? "Cada pergunta testa seu conhecimento sobre técnicas de panificação." : 
+                 step === 2 ? "Selecione uma das opções e clique em \"Verificar Resposta\"." : 
+                 "A cada resposta correta, você ganha XP e desbloqueia novas receitas!"}
+              </p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 1 }}
+      >
+        <Button 
+          className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white py-4 text-lg font-bold"
+          onClick={() => setShowInstructions(false)}
+          style={animations}
+        >
+          Entendi, vamos começar!
+        </Button>
+      </motion.div>
+    </motion.div>
+  </motion.div>
+)}
       {/* Removido o título "Jogo de pães..." */}
 
       {/* Removido o timer da parte superior */}
@@ -814,13 +1164,13 @@ export default function BreadQuiz() {
         <Tabs defaultValue="quiz" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-6">
             <TabsTrigger value="quiz">Jogo</TabsTrigger>
-            <TabsTrigger value="recipes">
-              Receitas ({unlockedRecipes.length})
+            <TabsTrigger value="recipes" className="relative">
               {unlockedRecipes.length > 0 && (
-                <Badge variant="secondary" className="ml-2 bg-amber-200 text-amber-800">
+                <Badge variant="secondary" className="absolute -top-3 right-0 bg-amber-200 text-amber-800 text-xs px-1.5 py-0.5">
                   Novo
                 </Badge>
               )}
+              <span className="mt-1">Receitas ({unlockedRecipes.length})</span>
             </TabsTrigger>
             <TabsTrigger value="tips">Dicas</TabsTrigger>
           </TabsList>
@@ -830,7 +1180,7 @@ export default function BreadQuiz() {
               <CardHeader>
                 <CardTitle>Pergunta {currentQuestionIndex + 1} de {questions.length}</CardTitle>
                 <CardDescription>
-                  Responda corretamente para desbloquear receitas exclusivas!
+                  Responda corretamente para desbloquear receitas exclusivas!itas exclusivas!itas exclusivas!
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -924,19 +1274,19 @@ export default function BreadQuiz() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="flex justify-between">
+              <CardFooter className="flex justify-between pb-10">
                 {!showFeedback ? (
                   <Button
                     onClick={handleAnswerSubmit}
                     disabled={!selectedAnswer}
-                    className="w-full bg-gradient-to-r from-[#FFC107] to-[#FFA000] hover:from-[#FFA000] hover:to-[#FF8F00] text-white"
+                    className="w-full bg-gradient-to-r from-[#FFC107] to-[#FFA000] hover:from-[#FFA000] hover:to-[#FF8F00] text-white py-6 text-lg font-semibold"
                   >
                     Verificar Resposta
                   </Button>
                 ) : (
                   <Button
                     onClick={handleNextQuestion}
-                    className="w-full bg-gradient-to-r from-[#8B4513] to-[#A67B5B] hover:from-[#A67B5B] hover:to-[#8B4513] text-white"
+                    className="w-full bg-gradient-to-r from-[#8B4513] to-[#A67B5B] hover:from-[#A67B5B] hover:to-[#8B4513] text-white py-7 text-xl font-bold shadow-lg"
                   >
                     {currentQuestionIndex < questions.length - 1 ? "Próxima Pergunta" : "Ver Resultados"}
                   </Button>
@@ -1071,375 +1421,787 @@ export default function BreadQuiz() {
             )}
           </TabsContent>
 
-          <TabsContent value="tips" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tips.map((tip, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      {renderIcon(tip.icon)}
-                      {tip.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>{tip.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            {getUnlockedBonuses().map((bonus, index) => (
-              <Card key={`bonus-${index}`} className="bg-amber-50 border-amber-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {renderIcon(bonus.icon)}
-                    {bonus.title}
-                    <Badge className="ml-2 bg-green-100 text-green-800">Bônus</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>{bonus.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
-
-{showCompletionModal && (
-  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-    <Card className="max-w-xl w-full overflow-y-auto max-h-[90vh]">
-      <div className="bg-gradient-to-r from-amber-400 to-amber-600 text-white p-5">
-        <CardTitle className="text-3xl text-center">Parabéns, {levels[currentLevel - 1].name}! 🎉</CardTitle>
-        <CardDescription className="text-center text-white/90 text-lg mt-1">
-          Você completou o jogo com {xp} XP e desbloqueou {unlockedRecipes.length} receitas!
-        </CardDescription>
-      </div>
-      <CardContent className="space-y-4 p-6">
-        
-        <div className="bg-amber-50 p-4 rounded-lg border-2 border-amber-300">
-          <h3 className="font-bold text-amber-800 flex items-center gap-2 text-lg">
-            <Trophy className="h-6 w-6 text-amber-600" />
-            Receitas Desbloqueadas: {unlockedRecipes.length}
-          </h3>
           
-          {/* Receita principal com destaque */}
-          <div className="mt-4 mb-4 bg-green-100 p-4 rounded-lg border-2 border-green-500 shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Bread className="h-7 w-7 text-amber-700 bg-amber-100 p-1 rounded-full mr-2" />
+<TabsContent value="tips" className="space-y-6">
+  <div className="bg-gradient-to-r from-amber-100 to-amber-50 p-4 rounded-lg border border-amber-200 text-center mb-6">
+    <h2 className="text-xl font-bold text-amber-800 mb-2">Dicas do Mestre Padeiro</h2>
+    <p className="text-amber-700">Segredos e técnicas para fazer pães perfeitos em casa!</p>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {tips.map((tip, index) => (
+      <div 
+        key={index} 
+        className="bg-white rounded-lg shadow-md overflow-hidden border border-amber-100 hover:shadow-lg transition-all transform hover:-translate-y-1"
+      >
+        <div className="bg-gradient-to-r from-amber-500 to-amber-400 p-3">
+          <h3 className="text-white font-bold flex items-center gap-2 text-lg">
+            <div className="bg-white p-1.5 rounded-full text-amber-500">
+              {renderIcon(tip.icon)}
+            </div>
+            {tip.title}
+          </h3>
+        </div>
+        <div className="p-4 border-t border-amber-100">
+          <p className="text-gray-700">{tip.description}</p>
+          <div className="mt-3 flex justify-end">
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">
+              Dica Profissional
+            </Badge>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  {getUnlockedBonuses().length > 0 && (
+    <div className="mt-8 mb-4">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-0.5 bg-amber-300 flex-grow"></div>
+        <h2 className="text-xl font-bold text-amber-800 px-3 flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-amber-500" />
+          Bônus Desbloqueados
+        </h2>
+        <div className="h-0.5 bg-amber-300 flex-grow"></div>
+      </div>
+      
+      <div className="grid grid-cols-1 gap-4">
+        {getUnlockedBonuses().map((bonus, index) => (
+          <div 
+            key={`bonus-${index}`} 
+            className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-1 shadow-md hover:shadow-lg transition-all"
+          >
+            <div className="bg-white rounded-lg p-4 border border-amber-200">
+              <div className="flex items-start gap-3">
+                <div className="bg-amber-500 text-white p-2.5 rounded-full flex-shrink-0">
+                  {renderIcon(bonus.icon)}
+                </div>
                 <div>
-                  <h4 className="font-bold text-lg">300 Melhores Receitas de pães fofinhos que crescem muito! + Bônus</h4>
-                  <p className="text-sm text-gray-600">A coleção completa com todas as técnicas e segredos</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-amber-800 text-lg">{bonus.title}</h3>
+                    <Badge className="bg-green-100 text-green-800 ml-2">Bônus Especial</Badge>
+                  </div>
+                  <p className="text-gray-700">{bonus.description}</p>
+                  <div className="mt-3">
+                    <Badge variant="outline" className="border-amber-300 text-amber-700">
+                      <Gift className="h-3.5 w-3.5 mr-1" /> Desbloqueado
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {getUnlockedBonuses().length === 0 && (
+    <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center mt-6">
+      <Lock className="h-12 w-12 mx-auto mb-3 text-amber-400" />
+      <h3 className="text-lg font-bold text-amber-800 mb-2">Bônus Bloqueados</h3>
+      <p className="text-amber-700 mb-4">Responda corretamente às perguntas do jogo para desbloquear dicas e técnicas especiais!</p>
+      <Button 
+        variant="outline" 
+        className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200"
+        onClick={() => setActiveTab("quiz")}
+      >
+        Voltar ao Jogo
+      </Button>
+    </div>
+  )}
+
+  <div className="bg-green-50 border border-green-200 rounded-lg p-5 mt-6 flex items-center gap-4">
+    <div className="bg-green-100 p-3 rounded-full">
+      <Sparkles className="h-8 w-8 text-green-600" />
+    </div>
+    <div>
+      <h3 className="font-bold text-green-800 mb-1">Quer mais dicas exclusivas?</h3>
+      <p className="text-green-700 text-sm">Desbloqueie todas as receitas para ter acesso a centenas de dicas profissionais!</p>
+    </div>
+    <Button 
+      className="ml-auto bg-green-600 hover:bg-green-700 text-white"
+      onClick={() => setShowPurchaseModal(true)}
+    >
+      Ver Oferta
+    </Button>
+  </div>
+</TabsContent>
+
+{showLevelUpModal && (
+  <motion.div 
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    transition={{ duration: 0.3 }}
+  >
+    <motion.div 
+      className="max-w-xl w-full overflow-y-auto max-h-[90vh]"
+      initial={{ scale: 0.9, y: 20, opacity: 0 }}
+      animate={{ scale: 1, y: 0, opacity: 1 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 20,
+        delay: 0.1
+      }}
+      onAnimationStart={() => levelUpAudioRef.current?.play()}
+    >
+      <Card className="border-0 overflow-hidden shadow-2xl">
+        <motion.div 
+          className="bg-gradient-to-r from-amber-400 to-amber-600 text-white p-5 relative overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <motion.div 
+            className="absolute -top-10 -right-10 w-40 h-40 bg-amber-300 rounded-full opacity-20"
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.3, 0.2]
+            }}
+            transition={{ 
+              duration: 3,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatType: "reverse"
+            }}
+          />
+          <motion.div 
+            className="absolute -bottom-10 -left-10 w-32 h-32 bg-amber-300 rounded-full opacity-20"
+            animate={{ 
+              scale: [1, 1.1, 1],
+              opacity: [0.2, 0.25, 0.2]
+            }}
+            transition={{ 
+              duration: 2.5,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatType: "reverse",
+              delay: 0.5
+            }}
+          />
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <CardTitle className="text-3xl text-center">Parabéns! 🎉</CardTitle>
+            <CardDescription className="text-center text-white/90 text-lg mt-1">
+              Você alcançou o nível {newLevel}!
+            </CardDescription>
+          </motion.div>
+          <motion.div 
+            className="mt-3 bg-amber-500/30 p-3 rounded-lg border border-white/20 text-center"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 400, 
+              damping: 15,
+              delay: 0.5
+            }}
+          >
+            <span className="font-bold text-xl">{levels[newLevel - 1].name}</span>
+          </motion.div>
+        </motion.div>
+        
+        <CardContent className="space-y-4 p-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="bg-amber-500 text-white p-1.5 rounded-full">
+                  <Star className="h-5 w-5" />
+                </div>
+                <span className="font-bold text-amber-800">
+                  Nível {newLevel}: {levels[newLevel - 1].name}
+                </span>
+              </div>
+              <div className="text-sm font-medium text-amber-700">
+                {xp} XP acumulados
+              </div>
+            </div>
+            
+            <div className="relative pt-1">
+              <motion.div 
+                className="overflow-hidden h-2 mb-1 text-xs flex rounded bg-amber-100"
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+              >
+                <motion.div
+                  style={{ width: `${getCurrentLevelProgress()}%` }}
+                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-amber-400 to-amber-600"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${getCurrentLevelProgress()}%` }}
+                  transition={{ duration: 1, delay: 0.8 }}
+                />
+              </motion.div>
+            </div>
+          </motion.div>
+          
+          {unlockedRecipes.length > 0 && (
+            <motion.div 
+              className="mt-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.9 }}
+            >
+              <h3 className="font-bold text-amber-800 flex items-center gap-2 mb-3">
+                <Trophy className="h-5 w-5 text-amber-600" />
+                Receitas Desbloqueadas ({unlockedRecipes.length})
+              </h3>
+              
+              <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                {recipeCollections.filter(r => r.id !== 1 && unlockedRecipes.includes(r.id)).map((recipe, index) => (
+                  <motion.div 
+                    key={index} 
+                    className="flex items-center justify-between bg-white p-2 rounded border border-amber-100"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 1 + (index * 0.1) }}
+                  >
+                    <span className="flex items-center">
+                      {renderIcon(recipe.icon)}
+                      <span className="ml-2 text-sm">{recipe.title}</span>
+                    </span>
+                    <Badge className="bg-green-100 text-green-800 text-xs">Desbloqueado</Badge>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+          
+          {getUnlockedBonuses().length > 0 && (
+            <motion.div 
+              className="mt-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 1.1 }}
+            >
+              <h3 className="font-bold text-amber-800 flex items-center gap-2 mb-3">
+                <Gift className="h-5 w-5 text-amber-600" />
+                Dicas Desbloqueadas ({getUnlockedBonuses().length})
+              </h3>
+              
+              <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                {getUnlockedBonuses().map((bonus, index) => (
+                  <motion.div 
+                    key={index} 
+                    className="flex items-center justify-between bg-white p-2 rounded border border-amber-100"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 1.2 + (index * 0.1) }}
+                  >
+                    <span className="flex items-center">
+                      {renderIcon(bonus.icon)}
+                      <span className="ml-2 text-sm">{bonus.title}</span>
+                    </span>
+                    <Badge className="bg-green-100 text-green-800 text-xs">Desbloqueado</Badge>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+          
+          <motion.div 
+            className="bg-green-50 p-4 rounded-lg border border-green-200 mt-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1.3 }}
+          >
+            <h3 className="font-bold text-green-800 text-center mb-2">Continue jogando para desbloquear mais!</h3>
+            <p className="text-sm text-green-700 text-center mb-3">
+              Responda mais perguntas corretamente para subir de nível e desbloquear mais receitas e dicas exclusivas.
+            </p>
+            <div className="flex justify-center">
+              <Badge className="bg-amber-100 text-amber-800 py-1">
+                Próximo nível: {newLevel < levels.length ? levels[newLevel].name : "Nível Máximo"}
+              </Badge>
+            </div>
+          </motion.div>
+        </CardContent>
+        
+        <CardFooter className="flex gap-2 p-6 bg-gray-50 border-t">
+          <motion.div
+            className="w-full"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1.4 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Button
+              onClick={() => setShowLevelUpModal(false)}
+              className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
+            >
+              Desbloquear Mais
+            </Button>
+          </motion.div>
+        </CardFooter>
+      </Card>
+    </motion.div>
+  </motion.div>
+)}
+
+{showCompletionModal && (
+  <motion.div 
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.3 }}
+  >
+    <motion.div 
+      className="max-w-xl w-full overflow-y-auto max-h-[90vh]"
+      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 20,
+        delay: 0.1
+      }}
+      onAnimationStart={() => popupAudioRef.current?.play()}
+    >
+      <Card className="border-0 overflow-hidden shadow-2xl">
+        <motion.div 
+          className="bg-gradient-to-r from-amber-400 to-amber-600 text-white p-5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <CardTitle className="text-3xl text-center">Parabéns, {levels[currentLevel - 1].name}! 🎉</CardTitle>
+            <CardDescription className="text-center text-white/90 text-lg mt-1">
+              Você completou o jogo com {xp} XP e desbloqueou {unlockedRecipes.length} receitas!
+            </CardDescription>
+          </motion.div>
+        </motion.div>
+        
+        <CardContent className="space-y-4 p-6">
+          <motion.div 
+            className="bg-amber-50 p-4 rounded-lg border-2 border-amber-300"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <h3 className="font-bold text-amber-800 flex items-center gap-2 text-lg">
+              <Trophy className="h-6 w-6 text-amber-600" />
+              Receitas Desbloqueadas: {unlockedRecipes.length}
+            </h3>
+            
+            <motion.div 
+              className="mt-4 mb-4 bg-green-100 p-4 rounded-lg border-2 border-green-500 shadow-md"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 400, 
+                damping: 15,
+                delay: 0.5
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Bread className="h-7 w-7 text-amber-700 bg-amber-100 p-1 rounded-full mr-2" />
+                  <div>
+                    <h4 className="font-bold text-lg">300 Melhores Receitas de pães fofinhos que crescem muito! + Bônus</h4>
+                    <p className="text-sm text-gray-600">A coleção completa com todas as técnicas e segredos</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
+                  <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
+                  <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
+                </div>
+              </div>
+            </motion.div>
+            
+            <ul className="mt-2 space-y-2 divide-y divide-amber-200">
+              {recipeCollections.filter(r => r.id !== 1 && unlockedRecipes.includes(r.id)).map((recipe, index) => (
+                <motion.li 
+                  key={index} 
+                  className="flex items-center justify-between pt-2"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: 0.6 + (index * 0.1) }}
+                >
+                  <span className="flex items-center">
+                    {renderIcon(recipe.icon)}
+                    <span className="ml-2">{recipe.title}</span>
+                  </span>
+                  <span className="text-green-600 font-semibold">
+                    <span className="line-through text-gray-500 mr-1">R$19,90</span>
+                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-bold">Grátis</span>
+                  </span>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+          
+          <motion.div 
+            className="bg-green-50 p-4 rounded-lg border-2 border-green-300 mt-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.8 }}
+          >
+            <h3 className="font-bold text-green-800 flex items-center gap-2 text-lg">
+              <Gift className="h-6 w-6 text-green-600" />
+              Bônus Desbloqueados:
+            </h3>
+            <ul className="mt-2 space-y-2">
+              {getUnlockedBonuses().map((bonus, index) => (
+                <motion.li 
+                  key={index} 
+                  className="flex items-center bg-white p-3 rounded border border-green-200"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: 0.9 + (index * 0.1) }}
+                >
+                  {renderIcon(bonus.icon)}
+                  <span className="ml-2 text-base">{bonus.title}</span>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+          
+          <motion.div 
+            className="bg-amber-50 p-5 rounded-lg border-2 border-amber-300 mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 1.1 }}
+          >
+            <h3 className="font-bold text-center text-2xl mb-3 text-amber-800">
+              PARABÉNS! VOCÊ DESBLOQUEOU UMA OFERTA ESPECIAL
+            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <div>
                 <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
                 <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
                 <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
               </div>
+              <motion.div
+                animate={{ 
+                  rotate: [3, -3, 3],
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Number.POSITIVE_INFINITY,
+                  repeatType: "reverse"
+                }}
+              >
+                <Badge className="bg-red-600 text-white text-xl py-1.5 px-3 transform">-81%</Badge>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
           
-          <ul className="mt-2 space-y-2 divide-y divide-amber-200">
-            {recipeCollections.filter(r => r.id !== 1 && unlockedRecipes.includes(r.id)).map((recipe, index) => (
-              <li key={index} className="flex items-center justify-between pt-2">
-                <span className="flex items-center">
-                  {renderIcon(recipe.icon)}
-                  <span className="ml-2">{recipe.title}</span>
-                </span>
-                <span className="text-green-600 font-semibold">
-                  <span className="line-through text-gray-500 mr-1">R$19,90</span>
-                  <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-bold">Grátis</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg border-2 border-green-300 mt-4">
-          <h3 className="font-bold text-green-800 flex items-center gap-2 text-lg">
-            <Gift className="h-6 w-6 text-green-600" />
-            Bônus Desbloqueados:
-          </h3>
-          <ul className="mt-2 space-y-2">
-            {getUnlockedBonuses().map((bonus, index) => (
-              <li key={index} className="flex items-center bg-white p-3 rounded border border-green-200">
-                {renderIcon(bonus.icon)}
-                <span className="ml-2 text-base">{bonus.title}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        
-        
-      <div className="bg-amber-50 p-5 rounded-lg border-2 border-amber-300 mb-4">
-          <h3 className="font-bold text-center text-2xl mb-3 text-amber-800">
-            PARABÉNS! VOCÊ DESBLOQUEOU UMA OFERTA ESPECIAL
-          </h3>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
-              <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
-              <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
+          <motion.div 
+            className="bg-blue-50 p-4 rounded-lg border-2 border-blue-300 mb-4 flex items-center gap-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 1.2 }}
+          >
+            <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
+              <Trophy className="h-6 w-6 text-blue-600" />
             </div>
-            <Badge className="bg-red-600 text-white text-xl py-1.5 px-3 rotate-3 transform">-81%</Badge>
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="flex gap-2 p-6 bg-gray-50 border-t">
-        <Button
-          variant="outline"
-          onClick={() => {
-            setShowCompletionModal(false)
-            setActiveTab("recipes")
-          }}
-          className="flex-1"
-        >
-          Ver Receitas
-        </Button>
-        <Button
-          onClick={() => {
-            setShowCompletionModal(false)
-            setShowPurchaseModal(true)
-          }}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-lg py-6"
-        >
-          Acessar Agora
-        </Button>
-      </CardFooter>
-    </Card>
-  </div>
+            <div>
+              <h3 className="font-bold text-blue-800 text-lg">Continue o jogo do Pão Perfeito!</h3>
+              <p className="text-blue-700">
+                Desbloqueie mais Receitas Secretas e Descontos respondendo às perguntas do jogo!
+              </p>
+            </div>
+          </motion.div>
+        </CardContent>
+        
+        <CardFooter className="flex gap-2 p-6 bg-gray-50 border-t">
+          <motion.div 
+            className="flex-1"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 1.3 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCompletionModal(false)
+                setActiveTab("recipes")
+              }}
+              className="w-full"
+            >
+              Ver Receitas
+            </Button>
+          </motion.div>
+          
+          <motion.div 
+            className="flex-1"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 1.4 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <Button
+              onClick={() => {
+                setShowCompletionModal(false)
+                setShowPurchaseModal(true)
+              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
+            >
+              Acessar Agora
+            </Button>
+          </motion.div>
+        </CardFooter>
+      </Card>
+    </motion.div>
+  </motion.div>
 )}
 
 {showPurchaseModal && (
-  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-    <Card className="max-w-xl w-full overflow-y-auto max-h-[90vh]">
-      <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-6">
-        <CardTitle className="text-2xl text-center">Acesse Todas as Receitas</CardTitle>
-        <CardDescription className="text-center text-white/90 mt-1">
-          {purchaseSuccess
-            ? "Parabéns pela sua compra!"
-            : "Desbloqueie receitas exclusivas com um único pagamento"}
-        </CardDescription>
-      </div>
-      <CardContent className="space-y-6 p-6">
-        {!purchaseSuccess ? (
+  <motion.div 
+    className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.3 }}
+  >
+    <motion.div 
+      className="max-w-xl w-full overflow-y-auto max-h-[90vh]"
+      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 20,
+        delay: 0.1
+      }}
+      onAnimationStart={() => popupAudioRef.current?.play()}
+    >
+      <Card className="border-0 overflow-hidden shadow-2xl">
+        <motion.div 
+          className="bg-gradient-to-r from-green-500 to-green-700 text-white p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <CardTitle className="text-2xl text-center">Acesse Todas as Receitas</CardTitle>
+            <CardDescription className="text-center text-white/90 mt-1">
+              Desbloqueie receitas exclusivas com um único pagamento
+            </CardDescription>
+          </motion.div>
+        </motion.div>
+        
+        <CardContent className="space-y-6 p-6">
           <>
-            <div className="bg-red-50 border-2 border-red-500 p-3 rounded-md text-center mb-4">
+            <motion.div 
+              className="bg-red-50 border-2 border-red-500 p-3 rounded-md text-center mb-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
               <div className="flex items-center justify-center gap-2 font-bold text-red-700">
                 <Timer className="h-5 w-5" />
                 <span>ESSA OFERTA ESPECIAL EXPIRA EM: {formatTime(timeLeft)}</span>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="bg-amber-50 p-4 rounded-lg border-2 border-amber-300">
+            <motion.div 
+              className="bg-amber-50 p-4 rounded-lg border-2 border-amber-300"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.5 }}
+            >
               <h3 className="font-bold text-amber-800 text-lg flex items-center gap-2">
                 <Gift className="h-5 w-5 text-amber-700" />
                 O que você vai receber:
               </h3>
               <ul className="mt-4 space-y-3">
-                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
-                  <Bread className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
-                  <div>
-                    <div className="font-medium">300 Receitas de Pães Caseiros Fofinhos</div>
-                    <div className="text-xs text-gray-500">A coleção completa com todas as técnicas</div>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
-                  <Utensils className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
-                  <div>
-                    <div className="font-medium">75 Receitas de Tortas Salgadas</div>
-                    <div className="text-xs text-gray-500">Perfeitas para festas e eventos</div>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
-                  <Pizza className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
-                  <div>
-                    <div className="font-medium">80 Receitas de Pizzas Artesanais</div>
-                    <div className="text-xs text-gray-500">Com massa perfeita e coberturas deliciosas</div>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
-                  <Cake className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
-                  <div>
-                    <div className="font-medium">120 Receitas de Bolos e Sobremesas</div>
-                    <div className="text-xs text-gray-500">Doces irresistíveis para todas as ocasiões</div>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200">
-                  <Users className="h-6 w-6 text-amber-700 bg-amber-100 p-1 rounded-full" />
-                  <div>
-                    <div className="font-medium">Acesso ao Grupo VIP de Suporte</div>
-                    <div className="text-xs text-gray-500">Tire dúvidas diretamente com chefs profissionais</div>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3 bg-white p-3 rounded-md border border-amber-200 border-green-300">
-                  <Trophy className="h-6 w-6 text-green-600 bg-green-100 p-1 rounded-full" />
-                  <div>
-                    <div className="font-medium text-green-700">+ Todas as receitas desbloqueadas</div>
-                    <div className="text-xs text-gray-500">Acesso imediato a todas as receitas que você já desbloqueou</div>
-                  </div>
-                </li>
+                {[
+                  { icon: "bread", title: "300 Receitas de Pães Caseiros Fofinhos", desc: "A coleção completa com todas as técnicas" },
+                  { icon: "utensils", title: "75 Receitas de Tortas Salgadas", desc: "Perfeitas para festas e eventos" },
+                  { icon: "pizza", title: "80 Receitas de Pizzas Artesanais", desc: "Com massa perfeita e coberturas deliciosas" },
+                  { icon: "cake", title: "120 Receitas de Bolos e Sobremesas", desc: "Doces irresistíveis para todas as ocasiões" },
+                  { icon: "users", title: "Acesso ao Grupo VIP de Suporte", desc: "Tire dúvidas diretamente com chefs profissionais" },
+                  { icon: "trophy", title: "+ Todas as receitas desbloqueadas", desc: "Acesso imediato a todas as receitas que você já desbloqueou", special: true }
+                ].map((item, index) => (
+                  <motion.li 
+                    key={index} 
+                    className={`flex items-center gap-3 bg-white p-3 rounded-md border ${item.special ? 'border-green-300' : 'border-amber-200'}`}
+                    initial={{ opacity: 0, x: -15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.6 + (index * 0.1) }}
+                  >
+                    <div className={`h-6 w-6 ${item.special ? 'text-green-600 bg-green-100' : 'text-amber-700 bg-amber-100'} p-1 rounded-full`}>
+                      {renderIcon(item.icon)}
+                    </div>
+                    <div>
+                      <div className={`font-medium ${item.special ? 'text-green-700' : ''}`}>{item.title}</div>
+                      <div className="text-xs text-gray-500">{item.desc}</div>
+                    </div>
+                  </motion.li>
+                ))}
               </ul>
-            </div>
-      
-      <div className="bg-amber-100 p-4 rounded-lg border-2 border-amber-300">
-        <h3 className="font-bold text-amber-800 flex items-center gap-2">
-          <Gift className="h-5 w-5" />
-          Mais todos os bônus e troques da página anterior!
-        </h3>
-        <p className="text-sm text-amber-700 mt-1">
-          Você receberá acesso a todas as receitas desbloqueadas e todos os bônus exclusivos em um único pacote.
-        </p>
-      </div>
+            </motion.div>
 
-      <div className="flex items-center justify-between p-4 bg-green-50 border-2 border-green-300 rounded-lg">
-        <div>
-          <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
-          <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
-          <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
-        </div>
-        <Badge className="bg-red-600 text-white text-xl py-1.5 px-3 rotate-3 transform">-81%</Badge>
-      </div>
-      
-      <Button
-        className="w-full bg-green-600 hover:bg-green-700 text-xl py-8 font-bold shadow-lg rounded-full"
-        style={pulseAnimation}
-        onClick={handlePurchase}
-        disabled={purchaseLoading}
-      >
-        {purchaseLoading ? (
-          "Processando..."
-        ) : (
-          <>
-            <ShoppingCart className="mr-2 h-6 w-6" />
-            Eu quero as receitas!
+            <motion.div 
+              className="bg-amber-100 p-4 rounded-lg border-2 border-amber-300"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 1.2 }}
+            >
+              <h3 className="font-bold text-amber-800 flex items-center gap-2">
+                <Gift className="h-5 w-5" />
+                Mais todos os bônus e troques da página anterior!
+              </h3>
+              <p className="text-sm text-amber-700 mt-1">
+                Você receberá acesso a todas as receitas desbloqueadas e todos os bônus exclusivos em um único pacote.
+              </p>
+            </motion.div>
+
+            <motion.div 
+              className="flex items-center justify-between p-4 bg-green-50 border-2 border-green-300 rounded-lg"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 1.3 }}
+            >
+              <div>
+                <div className="text-sm text-gray-600">6x de R$ 6,16 ou</div>
+                <div className="text-3xl font-bold text-green-600">Apenas R$37,00</div>
+                <div className="text-sm text-green-700 font-medium">À vista no Pix ou Cartão</div>
+              </div>
+              <motion.div
+                animate={{ 
+                  rotate: [3, -3, 3],
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Number.POSITIVE_INFINITY,
+                  repeatType: "reverse"
+                }}
+              >
+                <Badge className="bg-red-600 text-white text-xl py-1.5 px-3 transform">-81%</Badge>
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 1.4 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 text-xl py-8 font-bold shadow-lg rounded-full mt-4"
+                style={animations}
+                onClick={handlePurchase}
+                disabled={purchaseLoading}
+              >
+                {purchaseLoading ? (
+                  "Processando..."
+                ) : (
+                  <>
+                    <ShoppingCart className="mr-2 h-6 w-6" />
+                    Eu quero as receitas!
+                  </>
+                )}
+              </Button>
+            </motion.div>
+
+            <motion.div 
+              className="flex justify-center mt-2 mb-6"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 1.5 }}
+            >
+              <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-center">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Lock className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-gray-700">Pagamento 100% Seguro e Confiável</span>
+                </div>
+                <div className="text-xs text-gray-500">Seus dados estão protegidos e criptografados</div>
+              </div>
+            </motion.div>
+            
+            <motion.div 
+              className="mt-6 border-t border-gray-200 pt-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 1.6 }}
+            >
+              <h3 className="text-xl font-bold text-center mb-4">O que dizem nossos clientes:</h3>
+              <div className="space-y-4">
+                {[
+                  { name: "Maria Silva", img: "https://infosaber.online/wp-content/uploads/2025/03/Design-sem-nome-1.png-633x1024.webp", text: "Essas receitas transformaram minha forma de fazer pães! Antes meus pães ficavam duros e pesados, agora todos ficam fofos e crescem muito. Minha família não para de elogiar e pedir mais!" },
+                  { name: "João Oliveira", img: "https://infosaber.online/wp-content/uploads/2025/03/Design-sem-nome-2-864x1536-1-576x1024.png", text: "Nunca imaginei que conseguiria fazer pães tão profissionais em casa! As técnicas são simples de seguir e os resultados são incríveis. Já economizei mais de R$300 por mês não comprando mais pães na padaria!" },
+                  { name: "Ana Beatriz", img: "https://randomuser.me/api/portraits/women/42.jpg", text: "Comecei a fazer pães em casa como hobby e agora vendo para vizinhos e amigos! Com as receitas do curso, consegui uma renda extra de R$1.200 por mês. O investimento se pagou na primeira semana!" },
+                  { name: "Carlos Mendes", img: "https://randomuser.me/api/portraits/men/32.jpg", text: "Tenho intolerância a glúten e as receitas de fermentação natural me ajudaram muito! Agora consigo comer pães sem problemas digestivos. As técnicas são fáceis de seguir mesmo para quem nunca fez pão antes." }
+                ].map((testimonial, index) => (
+                  <motion.div 
+                    key={index} 
+                    className="bg-white p-4 rounded-lg border border-gray-200"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 1.7 + (index * 0.15) }}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <img 
+                        src={testimonial.img || "/placeholder.svg"} 
+                        alt={`Depoimento de ${testimonial.name}`} 
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
+                      <div>
+                        <h4 className="font-bold">{testimonial.name}</h4>
+                        <div className="flex text-amber-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 fill-current" />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-gray-600 italic">{testimonial.text}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </>
-        )}
-      </Button>
-      
-      <div className="flex justify-center mt-2">
-        <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <Lock className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-gray-700">Pagamento 100% Seguro e Confiável</span>
-          </div>
-          <div className="text-xs text-gray-500">Seus dados estão protegidos e criptografados</div>
-        </div>
-      </div>
-      
-      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mt-3">
-        <div className="flex items-center gap-2">
-          <Award className="h-5 w-5 text-blue-600" />
-          <span className="font-medium text-blue-800">Garantia de 90 dias</span>
-        </div>
-        <p className="text-sm text-blue-700 mt-1">
-          Conforme o Código de Defesa do Consumidor, você tem 90 dias de garantia. Se não ficar satisfeito, devolvemos seu dinheiro.
-        </p>
-      </div>
-    </>
-  ) : (
-    <>
-    <div className="mt-8 border-t border-gray-200 pt-6">
-      <h3 className="text-xl font-bold text-center mb-4">Como funciona:</h3>
-      <div className="space-y-6">
-        <div className="flex items-start gap-3">
-          <div className="bg-green-100 rounded-full w-8 h-8 flex items-center justify-center text-green-700 font-bold flex-shrink-0">1</div>
-          <div>
-            <h4 className="font-bold text-gray-800">Liberando o acesso:</h4>
-            <p className="text-gray-600">Basta clicar no botão para desbloquear seu acesso a todas as receitas e seus bônus que você conquistou!</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="bg-green-100 rounded-full w-8 h-8 flex items-center justify-center text-green-700 font-bold flex-shrink-0">2</div>
-          <div>
-            <h4 className="font-bold text-gray-800">Pague com Pix ou Cartão:</h4>
-            <p className="text-gray-600">Você escolhe como quer pagar! Finalize sua compra para receber tudo imediatamente no email e whatsapp.</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="bg-green-100 rounded-full w-8 h-8 flex items-center justify-center text-green-700 font-bold flex-shrink-0">3</div>
-          <div>
-            <h4 className="font-bold text-gray-800">Receba seu acesso:</h4>
-            <p className="text-gray-600">Você receberá o link para o acesso ao acervo completo de todas as receitas e bônus de suas conquistas!</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div className="mt-8 border-t border-gray-200 pt-6">
-      <h3 className="text-xl font-bold text-center mb-4">O que dizem nossos clientes:</h3>
-      <div className="space-y-4">
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="flex items-center gap-3 mb-2">
-            <img 
-              src="https://infosaber.online/wp-content/uploads/2025/03/Design-sem-nome-1.png-633x1024.webp" 
-              alt="Depoimento de cliente" 
-              className="w-16 h-16 rounded-full object-cover"
-            />
-            <div>
-              <h4 className="font-bold">Maria Silva</h4>
-              <div className="flex text-amber-400">
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-              </div>
-            </div>
-          </div>
-          <p className="text-gray-600 italic">"Essas receitas transformaram minha forma de fazer pães! Agora todos os meus pães ficam fofos e crescem muito. Minha família adora!"</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="flex items-center gap-3 mb-2">
-            <img 
-              src="https://infosaber.online/wp-content/uploads/2025/03/Design-sem-nome-2-864x1536-1-576x1024.png" 
-              alt="Depoimento de cliente" 
-              className="w-16 h-16 rounded-full object-cover"
-            />
-            <div>
-              <h4 className="font-bold">João Oliveira</h4>
-              <div className="flex text-amber-400">
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-              </div>
-            </div>
-          </div>
-          <p className="text-gray-600 italic">"Nunca imaginei que conseguiria fazer pães tão profissionais em casa! As técnicas são simples de seguir e os resultados são incríveis. Recomendo muito!"</p>
-        </div>
-      </div>
-    </div>
-  </>
-  )}
-</CardContent>
-      <CardFooter className="flex flex-col gap-2 p-6 bg-gray-50 border-t">
-        {!purchaseSuccess ? (
-          <Button
+        </CardContent>
+        
+        <CardFooter className="flex flex-col gap-2 p-6 bg-gray-50 border-t">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 2.3 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             className="w-full"
-            onClick={() => {
-              setShowPurchaseModal(false)
-              setActiveTab("recipes")
-            }}
           >
-            Voltar
-          </Button>
-        ) : (
-          <Button
-            className="w-full"
-            onClick={() => {
-              setShowPurchaseModal(false)
-              setActiveTab("recipes")
-            }}
-          >
-            Continuar
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
-  </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setShowPurchaseModal(false)
+                setActiveTab("recipes")
+              }}
+            >
+              Voltar
+            </Button>
+          </motion.div>
+        </CardFooter>
+      </Card>
+    </motion.div>
+  </motion.div>
 )}
-      </div>
-    </div>
-  )
-}
+</>
